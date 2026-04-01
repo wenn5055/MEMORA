@@ -116,7 +116,7 @@
     },
     "com.unity.postprocessing": {
       "version": "3.4.0",
-      "depth": 1,
+      "depth": 0,
       "source": "registry",
       "dependencies": {
         "com.unity.modules.physics": "1.0.0"
