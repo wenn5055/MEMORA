@@ -2182,7 +2182,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1248852345
 Transform:
   m_ObjectHideFlags: 0
@@ -3195,7 +3195,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   launchedFromSDKPipeline: 0
   completedSDKPipeline: 0
-  blueprintId: 
+  blueprintId: wrld_c901df8b-b92f-4987-a8b8-79f0bcdc311f
   contentType: 1
   assetBundleUnityVersion: 
   fallbackStatus: 0
@@ -3243,17 +3243,14 @@ MonoBehaviour:
   useAssignedLayers: 0
   DynamicPrefabs: []
   DynamicMaterials:
-  - {fileID: 2100000, guid: f32dd500294c1d048bf0629cf0c69be5, type: 2}
-  - {fileID: 2100000, guid: a6c1d9564b56ecd47b82dfa7a8f11cbe, type: 2}
   - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
   - {fileID: 2100000, guid: 8b150514582abbb43925bff3935e9a1e, type: 2}
-  - {fileID: 2100000, guid: fd20e45036ef323459e8286e9c23c02c, type: 2}
-  - {fileID: 2100000, guid: ecf772e37595083498c4fcd8a0eda415, type: 2}
-  - {fileID: 2100000, guid: 5a12e63f2fb44804fa718ce2bb87b30a, type: 2}
-  - {fileID: 2100000, guid: 1c987494452b85f4ab4cac3322415907, type: 2}
   - {fileID: 2100000, guid: 5d3aaaa0b6664254db08e41c73462e24, type: 2}
   - {fileID: 2100000, guid: 48e92d909f57aed4c9b9ccda5227f55d, type: 2}
+  - {fileID: 2100000, guid: ecf772e37595083498c4fcd8a0eda415, type: 2}
+  - {fileID: 2100000, guid: 5a12e63f2fb44804fa718ce2bb87b30a, type: 2}
   - {fileID: 2100000, guid: dfc63a6f99d651a4b86371da130e1ff2, type: 2}
+  - {fileID: 2100000, guid: fd20e45036ef323459e8286e9c23c02c, type: 2}
   LightMapsNear: []
   LightMapsFar: []
   LightMode: 0
