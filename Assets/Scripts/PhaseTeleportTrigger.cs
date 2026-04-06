@@ -1,11 +1,13 @@
 using UdonSharp;
 using UnityEngine;
+using UnityEngine.Serialization;
 using VRC.SDKBase;
 
 public class PhaseTeleportTrigger : UdonSharpBehaviour
 {
     [SerializeField] private Transform destination;
-    [SerializeField] private Material phase2Skybox;
+    [FormerlySerializedAs("phase2Skybox")]
+    [SerializeField] private Material targetSkybox;
     [SerializeField] private bool oneShot = true;
 
     private bool triggered;
@@ -21,7 +23,7 @@ public class PhaseTeleportTrigger : UdonSharpBehaviour
         triggered = true;
         player.TeleportTo(destination.position, destination.rotation);
 
-        if (phase2Skybox != null)
-            RenderSettings.skybox = phase2Skybox;
+        if (targetSkybox != null)
+            RenderSettings.skybox = targetSkybox;
     }
 }
