@@ -1,1 +1,10 @@
-{}
+{
+  "nextLineIndex": {
+    "LastUpdated": "2026-04-07T21:02:43.3286681+08:00",
+    "Key": "nextLineIndex",
+    "Value": {
+      "type": "Int",
+      "value": 2
+    }
+  }
+}
