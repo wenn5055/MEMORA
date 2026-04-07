@@ -2,7 +2,7 @@
 using UnityEngine;
 using VRC.SDKBase;
 
-[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
+//[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
 public class LaserPointerNew : UdonSharpBehaviour
 {
     [Header("References")]

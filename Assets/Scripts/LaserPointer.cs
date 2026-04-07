@@ -2,7 +2,7 @@
 using UnityEngine;
 using VRC.SDKBase;
 
-[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
+//[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
 public class LaserPointer : UdonSharpBehaviour
 {
     public LineRenderer laserLine;
