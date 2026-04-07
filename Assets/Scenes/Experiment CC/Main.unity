@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.38607496, g: 0.4810696, b: 0.61350787, a: 1}
+  m_IndirectSpecularColor: {r: 0, g: 0, b: 0, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -7935,7 +7935,7 @@ MonoBehaviour:
   SynchronizePosition: 0
   AllowCollisionOwnershipTransfer: 0
   Reliable: 0
-  _syncMethod: 3
+  _syncMethod: 2
   serializedProgramAsset: {fileID: 11400000, guid: 2cab4f7497c5fae4db8cfd513114b512,
     type: 2}
   programSource: {fileID: 11400000, guid: 681f38b4dc048e645af5c801807c56ac, type: 2}
@@ -14673,7 +14673,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   launchedFromSDKPipeline: 0
   completedSDKPipeline: 0
-  blueprintId: 
+  blueprintId: wrld_bc64c899-1f4c-43a0-9ae9-3cc40dc1ca71
   contentType: 1
   assetBundleUnityVersion: 
   fallbackStatus: 0
@@ -14729,12 +14729,14 @@ MonoBehaviour:
   - {fileID: 919132149155446097, guid: 872845ac0a2b8c6469d5e67ad0aba08e, type: 3}
   DynamicMaterials:
   - {fileID: 2100000, guid: 93caadf4359ae8143aad35b3145d31af, type: 2}
+  - {fileID: 2100000, guid: f43db235a1473d94a9e826dce4decb49, type: 2}
   - {fileID: 2100000, guid: 8b150514582abbb43925bff3935e9a1e, type: 2}
-  - {fileID: 2100000, guid: ecf772e37595083498c4fcd8a0eda415, type: 2}
   - {fileID: 2100000, guid: 5a12e63f2fb44804fa718ce2bb87b30a, type: 2}
-  - {fileID: 2100000, guid: dfc63a6f99d651a4b86371da130e1ff2, type: 2}
-  - {fileID: 2100000, guid: 5d3aaaa0b6664254db08e41c73462e24, type: 2}
+  - {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
   - {fileID: 2100000, guid: 48e92d909f57aed4c9b9ccda5227f55d, type: 2}
+  - {fileID: 2100000, guid: 5d3aaaa0b6664254db08e41c73462e24, type: 2}
+  - {fileID: 2100000, guid: dfc63a6f99d651a4b86371da130e1ff2, type: 2}
+  - {fileID: 2100000, guid: ecf772e37595083498c4fcd8a0eda415, type: 2}
   LightMapsNear: []
   LightMapsFar: []
   LightMode: 0
@@ -14890,12 +14892,6 @@ MonoBehaviour:
     - VRC.SDK3.Components.VRCPickup
     - VRC.SDK3.Components.VRCObjectSync
     - VRC.Udon.UdonBehaviour
-  - gameObject: {fileID: 2075313750}
-    ID: 11
-    SerializedTypeNames:
-    - VRC.Udon.UdonBehaviour
-    - VRC.SDK3.Components.VRCPickup
-    - VRC.SDK3.Components.VRCPlayerObject
   - gameObject: {fileID: 509557653}
     ID: 35
     SerializedTypeNames:
@@ -14906,9 +14902,17 @@ MonoBehaviour:
     - VRC.SDK3.Components.VRCPickup
     - VRC.SDK3.Components.VRCObjectSync
     - VRC.Udon.UdonBehaviour
+  - gameObject: {fileID: 2075313750}
+    ID: 11
+    SerializedTypeNames:
+    - VRC.Udon.UdonBehaviour
+    - VRC.SDK3.Components.VRCPickup
+    - VRC.SDK3.Components.VRCPlayerObject
+    - VRC.SDK3.Components.VRCObjectSync
   portraitCameraPositionOffset: {x: 0, y: 0, z: 0}
   portraitCameraRotationOffset: {x: 0, y: 1, z: 0, w: -0.00000004371139}
   PlayerPersistence:
+  - {fileID: 509557655}
   - {fileID: 1246842269}
   - {fileID: 2075313759}
   - {fileID: 797063222}
@@ -15232,6 +15236,11 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2553164182356775954, guid: b0b528a5c57654b45a513f21e10cd82d,
         type: 3}
+      propertyPath: _syncMethod
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2553164182356775954, guid: b0b528a5c57654b45a513f21e10cd82d,
+        type: 3}
       propertyPath: serializedProgramAsset
       value: 
       objectReference: {fileID: 11400000, guid: 01067bf1657962f42b5b65556b1c27f0,
@@ -15320,6 +15329,10 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 2075313759}
+    - targetCorrespondingSourceObject: {fileID: 7358501673781331992, guid: b0b528a5c57654b45a513f21e10cd82d,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2075313775}
   m_SourcePrefab: {fileID: 100100000, guid: b0b528a5c57654b45a513f21e10cd82d, type: 3}
 --- !u!1 &1090554927
 GameObject:
@@ -17921,7 +17934,7 @@ MonoBehaviour:
   SynchronizePosition: 0
   AllowCollisionOwnershipTransfer: 0
   Reliable: 0
-  _syncMethod: 3
+  _syncMethod: 2
   serializedProgramAsset: {fileID: 11400000, guid: 524719115fa306548b6ba84235436f95,
     type: 2}
   programSource: {fileID: 11400000, guid: f671dd2a3ab427c45ad709713b9613eb, type: 2}
@@ -28705,6 +28718,20 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 1076184637}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &2075313775
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2075313750}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1783056023, guid: 661092b4961be7145bfbe56e1e62337b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  AllowCollisionOwnershipTransfer: 1
+  ForceKinematicOnRemote: 0
 --- !u!1 &2084414621
 GameObject:
   m_ObjectHideFlags: 0
