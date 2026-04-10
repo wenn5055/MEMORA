@@ -1,0 +1,110 @@
+﻿Scene Triangle Report - CarScene
+Generated: 2026-04-10 16:01:31
+Total Triangles: 54,695
+Renderable Objects: 79
+Unique Mesh Assets: 6
+
+Top 20 Objects
+Triangles	Type	Active	Enabled	Mesh	Object Path
+11166	MeshFilter	True	True	Object_1	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_5
+4743	MeshFilter	True	True	Object_0	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_4
+3082	MeshFilter	True	True	Object_52	Car_reduced/root/GLTF_SceneRootNode/hood_8/Object_64
+2692	MeshFilter	True	True	Object_26	Car_reduced/root/GLTF_SceneRootNode/door_left_1/Object_31
+2692	MeshFilter	True	True	Object_46	Car_reduced/root/GLTF_SceneRootNode/door_right_7/Object_57
+2512	MeshFilter	True	True	Object_2	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_6
+1290	MeshFilter	True	True	Object_13	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_17
+1282	MeshFilter	True	True	Object_16	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_20
+988	MeshFilter	True	True	Object_38	Car_reduced/root/GLTF_SceneRootNode/wheel2_3/Object_45
+988	MeshFilter	True	True	Object_40	Car_reduced/root/GLTF_SceneRootNode/wheel3_4/Object_48
+988	MeshFilter	True	True	Object_44	Car_reduced/root/GLTF_SceneRootNode/wheel4_6/Object_54
+988	MeshFilter	True	True	Object_42	Car_reduced/root/GLTF_SceneRootNode/wheel_5/Object_51
+888	MeshFilter	True	True	Object_17	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_21
+848	MeshFilter	True	True	Object_39	Car_reduced/root/GLTF_SceneRootNode/wheel3_4/Object_47
+848	MeshFilter	True	True	Object_43	Car_reduced/root/GLTF_SceneRootNode/wheel4_6/Object_53
+842	MeshFilter	True	True	Object_37	Car_reduced/root/GLTF_SceneRootNode/wheel2_3/Object_44
+842	MeshFilter	True	True	Object_41	Car_reduced/root/GLTF_SceneRootNode/wheel_5/Object_50
+812	MeshFilter	True	True	Object_20	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_24
+768	MeshFilter	True	True	Object_10	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_14
+766	MeshFilter	True	True	Object_8	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_12
+
+All Objects
+Triangles	Type	Active	Enabled	Mesh	Object Path
+11166	MeshFilter	True	True	Object_1	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_5
+4743	MeshFilter	True	True	Object_0	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_4
+3082	MeshFilter	True	True	Object_52	Car_reduced/root/GLTF_SceneRootNode/hood_8/Object_64
+2692	MeshFilter	True	True	Object_26	Car_reduced/root/GLTF_SceneRootNode/door_left_1/Object_31
+2692	MeshFilter	True	True	Object_46	Car_reduced/root/GLTF_SceneRootNode/door_right_7/Object_57
+2512	MeshFilter	True	True	Object_2	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_6
+1290	MeshFilter	True	True	Object_13	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_17
+1282	MeshFilter	True	True	Object_16	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_20
+988	MeshFilter	True	True	Object_38	Car_reduced/root/GLTF_SceneRootNode/wheel2_3/Object_45
+988	MeshFilter	True	True	Object_40	Car_reduced/root/GLTF_SceneRootNode/wheel3_4/Object_48
+988	MeshFilter	True	True	Object_44	Car_reduced/root/GLTF_SceneRootNode/wheel4_6/Object_54
+988	MeshFilter	True	True	Object_42	Car_reduced/root/GLTF_SceneRootNode/wheel_5/Object_51
+888	MeshFilter	True	True	Object_17	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_21
+848	MeshFilter	True	True	Object_39	Car_reduced/root/GLTF_SceneRootNode/wheel3_4/Object_47
+848	MeshFilter	True	True	Object_43	Car_reduced/root/GLTF_SceneRootNode/wheel4_6/Object_53
+842	MeshFilter	True	True	Object_37	Car_reduced/root/GLTF_SceneRootNode/wheel2_3/Object_44
+842	MeshFilter	True	True	Object_41	Car_reduced/root/GLTF_SceneRootNode/wheel_5/Object_50
+812	MeshFilter	True	True	Object_20	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_24
+768	MeshFilter	True	True	Object_10	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_14
+766	MeshFilter	True	True	Object_8	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_12
+666	MeshFilter	True	True	Object_7	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_11
+621	MeshFilter	True	True	Object_5	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_9
+528	MeshFilter	True	True	Object_54	Car_reduced/root/GLTF_SceneRootNode/hood_8/Object_66
+510	MeshFilter	True	True	Toll Booth.001	Parking lot/infrastructure-building-parking-lot/Toll Booth.001
+480	MeshFilter	True	True	Object_33	Car_reduced/root/GLTF_SceneRootNode/bootlid_2/Object_39
+476	MeshFilter	True	True	Plane.003	Parking lot/infrastructure-building-parking-lot/Toll Booth.001/Plane.003
+469	MeshFilter	True	True	Object_53	Car_reduced/root/GLTF_SceneRootNode/hood_8/Object_65
+464	MeshFilter	False	True	VRC_pedestal1	Environment/VRC_pedestal_udon
+448	MeshFilter	True	True	Object_9	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_13
+388	MeshFilter	False	True	VRC_cube_A	Environment/VRC_cube_A_matte
+388	MeshFilter	False	True	VRC_cube_A	Environment/VRC_cube_A_matte (1)
+388	MeshFilter	False	True	VRC_cube_A	Environment/VRC_cube_A_matte (10)
+388	MeshFilter	False	True	VRC_cube_A	Environment/VRC_cube_A_matte (11)
+388	MeshFilter	False	True	VRC_cube_A	Environment/VRC_cube_A_matte (12)
+388	MeshFilter	False	True	VRC_cube_A	Environment/VRC_cube_A_matte (2)
+388	MeshFilter	False	True	VRC_cube_A	Environment/VRC_cube_A_matte (3)
+388	MeshFilter	False	True	VRC_cube_A	Environment/VRC_cube_A_matte (4)
+388	MeshFilter	False	True	VRC_cube_A	Environment/VRC_cube_A_matte (5)
+388	MeshFilter	False	True	VRC_cube_A	Environment/VRC_cube_A_matte (6)
+388	MeshFilter	False	True	VRC_cube_A	Environment/VRC_cube_A_matte (7)
+388	MeshFilter	False	True	VRC_cube_A	Environment/VRC_cube_A_matte (8)
+388	MeshFilter	False	True	VRC_cube_A	Environment/VRC_cube_A_matte (9)
+382	MeshFilter	True	True	Object_11	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_15
+361	MeshFilter	True	True	Object_6	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_10
+336	MeshFilter	True	True	Object_15	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_19
+305	MeshFilter	True	True	Object_25	Car_reduced/root/GLTF_SceneRootNode/door_left_1/Object_30
+305	MeshFilter	True	True	Object_45	Car_reduced/root/GLTF_SceneRootNode/door_right_7/Object_56
+294	MeshFilter	True	True	infrastructure-building-parking-lot	Parking lot/infrastructure-building-parking-lot
+294	MeshFilter	True	True	infrastructure-building-parking-lot	Parking lot/infrastructure-building-parking-lot (1)
+272	MeshFilter	True	True	Object_35	Car_reduced/root/GLTF_SceneRootNode/bootlid_2/Object_41
+236	MeshFilter	False	True	VRC_billboard1	SceneDescriptionBlock
+228	MeshFilter	True	True	Object_24	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_28
+202	MeshFilter	True	True	Object_27	Car_reduced/root/GLTF_SceneRootNode/door_left_1/Object_32
+202	MeshFilter	True	True	Object_47	Car_reduced/root/GLTF_SceneRootNode/door_right_7/Object_58
+173	MeshFilter	True	True	Object_31	Car_reduced/root/GLTF_SceneRootNode/door_left_1/Object_36
+173	MeshFilter	True	True	Object_51	Car_reduced/root/GLTF_SceneRootNode/door_right_7/Object_62
+164	MeshFilter	True	True	two-lane-linear-road-piece	Road/two-lane-linear-road-piece
+154	MeshFilter	True	True	Object_32	Car_reduced/root/GLTF_SceneRootNode/bootlid_2/Object_38
+144	MeshFilter	True	True	Object_12	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_16
+131	MeshFilter	True	True	Object_3	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_7
+96	MeshFilter	True	True	Object_30	Car_reduced/root/GLTF_SceneRootNode/door_left_1/Object_35
+96	MeshFilter	True	True	Object_50	Car_reduced/root/GLTF_SceneRootNode/door_right_7/Object_61
+88	MeshFilter	True	True	Object_19	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_23
+56	MeshFilter	True	True	Object_56	Car_reduced/root/GLTF_SceneRootNode/hood_8/Object_68
+48	MeshFilter	True	True	Object_4	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_8
+38	MeshFilter	True	True	Object_14	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_18
+26	MeshFilter	True	True	Object_28	Car_reduced/root/GLTF_SceneRootNode/door_left_1/Object_33
+26	MeshFilter	True	True	Object_48	Car_reduced/root/GLTF_SceneRootNode/door_right_7/Object_59
+26	MeshFilter	True	True	single-lane-linear-road-piece	Road/single-lane-linear-road-piece (1)
+24	MeshFilter	True	True	Object_21	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_25
+15	MeshFilter	True	True	Object_29	Car_reduced/root/GLTF_SceneRootNode/door_left_1/Object_34
+15	MeshFilter	True	True	Object_49	Car_reduced/root/GLTF_SceneRootNode/door_right_7/Object_60
+14	MeshFilter	True	True	Object_18	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_22
+10	MeshFilter	True	True	Object_22	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_26
+10	MeshFilter	True	True	Object_36	Car_reduced/root/GLTF_SceneRootNode/bootlid_2/Object_42
+8	MeshFilter	True	True	Object_23	Car_reduced/root/GLTF_SceneRootNode/body_0/Object_27
+6	MeshFilter	True	True	Object_34	Car_reduced/root/GLTF_SceneRootNode/bootlid_2/Object_40
+4	MeshFilter	True	True	Object_55	Car_reduced/root/GLTF_SceneRootNode/hood_8/Object_67
+2	MeshFilter	False	True	Quad	MirrorSystem/VRCMirror
