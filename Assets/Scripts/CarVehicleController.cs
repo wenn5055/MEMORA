@@ -12,6 +12,8 @@ public enum CarDriveMode
 [AddComponentMenu("VRChat/Car/Car Vehicle Controller")]
 public class CarVehicleController : UdonSharpBehaviour
 {
+    private const int MaxAutoSeatRetries = 20;
+
     public CarDriveMode driveMode = CarDriveMode.Manual;
 
     public CarSeatStation driverSeat;
@@ -26,6 +28,7 @@ public class CarVehicleController : UdonSharpBehaviour
     public float rideHeight = 0.35f;
     public LayerMask groundMask = ~0;
     public Transform[] routePoints;
+    public Light[] headlights;
     public bool loopRoute = true;
     public float waypointReachDistance = 1.5f;
     public float engineStartDelay = 0.2f;
@@ -36,26 +39,55 @@ public class CarVehicleController : UdonSharpBehaviour
 
     private int _driverPlayerId = -1;
     private bool _engineRunning;
+    private bool _routeCompleted;
+    private bool _localAutoSeated;
+    private int _autoSeatRetryCount;
 
     private float _currentSpeed;
     private float _steerInput;
     private float _throttleInput;
     private float _engineReadyTime;
     private int _routeIndex;
+    private bool _debugHasStepState;
+    private bool _debugLastCanMove;
+    private bool _debugLoggedLowSpeed;
+    private bool _debugLoggedMovement;
+    private bool _debugLoggedPendingEngine;
+    private bool _debugLoggedOwnershipLoss;
 
     private void Start()
     {
         SnapToGround();
+        SetHeadlightsEnabled(false);
+        _localAutoSeated = false;
+        _autoSeatRetryCount = 0;
+        SendCustomEventDelayedFrames(nameof(TryAutoSeatLocalPlayer), 2);
     }
 
     private void Update()
     {
-        if (!Networking.IsOwner(gameObject))
+        bool isOwner = Networking.IsOwner(gameObject);
+        if (_engineRunning && isOwner && Time.time < _engineReadyTime && !_debugLoggedPendingEngine)
         {
-            return;
+            Debug.Log("[CarVehicleController] Update waiting for engine ready. time=" + Time.time +
+                      ", engineReadyTime=" + _engineReadyTime +
+                      ", driverPlayerId=" + _driverPlayerId);
+            _debugLoggedPendingEngine = true;
         }
 
-        StepVehicle(Time.deltaTime);
+        if (_engineRunning && !isOwner && !_debugLoggedOwnershipLoss)
+        {
+            VRCPlayerApi localPlayer = Networking.LocalPlayer;
+            int localPlayerId = Utilities.IsValid(localPlayer) ? localPlayer.playerId : -1;
+            Debug.Log("[CarVehicleController] Update skipped: local is not owner while engineRunning. localPlayerId=" + localPlayerId +
+                      ", driverPlayerId=" + _driverPlayerId);
+            _debugLoggedOwnershipLoss = true;
+        }
+
+        if (isOwner)
+        {
+            StepVehicle(Time.deltaTime);
+        }
     }
 
     public bool CanLocalPlayerUseDriverSeat()
@@ -78,6 +110,70 @@ public class CarVehicleController : UdonSharpBehaviour
         return allowMasterFallback && player.isMaster;
     }
 
+    public bool HasRouteAvailable()
+    {
+        return routePoints != null && routePoints.Length > 0;
+    }
+
+    public bool IsRouteRunning()
+    {
+        return _engineRunning;
+    }
+
+    public bool IsLocalDriverInControl()
+    {
+        return IsLocalDriver();
+    }
+
+    public bool CanLocalPlayerStartRoute()
+    {
+        return IsLocalDriver() && !_routeCompleted && HasRouteAvailable();
+    }
+
+    public bool CanLocalPlayerToggleVehicle()
+    {
+        if (!IsLocalDriver())
+        {
+            return false;
+        }
+
+        if (_engineRunning)
+        {
+            return true;
+        }
+
+        if (driveMode == CarDriveMode.AutoRoute)
+        {
+            return !_routeCompleted && HasRouteAvailable();
+        }
+
+        return true;
+    }
+
+    public void TryAutoSeatLocalPlayer()
+    {
+        if (_localAutoSeated)
+        {
+            return;
+        }
+
+        VRCPlayerApi localPlayer = Networking.LocalPlayer;
+        if (!Utilities.IsValid(localPlayer))
+        {
+            ScheduleAutoSeatRetry();
+            return;
+        }
+
+        CarSeatStation assignedSeat = GetAssignedSeat(localPlayer);
+        if (assignedSeat == null || assignedSeat.station == null)
+        {
+            return;
+        }
+
+        assignedSeat.station.UseStation(localPlayer);
+        ScheduleAutoSeatRetry();
+    }
+
     public void OnSeatEntered(CarSeatStation seat, VRCPlayerApi player)
     {
         if (seat == null || !Utilities.IsValid(player))
@@ -85,58 +181,81 @@ public class CarVehicleController : UdonSharpBehaviour
             return;
         }
 
-        if (seat == driverSeat)
+        if (player.isLocal)
         {
-            _driverPlayerId = player.playerId;
-
-            if (player.isLocal)
-            {
-                if (!CanPlayerDrive(player))
-                {
-                    driverSeat.SendCustomEvent(nameof(CarSeatStation.ForceLocalExit));
-                    return;
-                }
-
-                Networking.SetOwner(player, gameObject);
-                _steerInput = 0f;
-                _throttleInput = 0f;
-                _currentSpeed = 0f;
-                _routeIndex = 0;
-
-                if (driveMode == CarDriveMode.Manual)
-                {
-                    _engineRunning = true;
-                    _engineReadyTime = Time.time + engineStartDelay;
-                }
-                else
-                {
-                    _engineRunning = false;
-                    _engineReadyTime = 0f;
-                }
-
-                RequestSerialization();
-            }
+            _localAutoSeated = true;
         }
-    }
 
-    public void OnSeatExited(CarSeatStation seat, VRCPlayerApi player)
-    {
-        if (seat != driverSeat || !Utilities.IsValid(player))
+        if (seat != driverSeat)
         {
             return;
         }
 
-        if (player.playerId != _driverPlayerId)
+        _driverPlayerId = player.playerId;
+
+        if (player.isLocal && !CanPlayerDrive(player))
+        {
+            driverSeat.SendCustomEvent(nameof(CarSeatStation.ForceLocalExit));
+            return;
+        }
+
+        SetHeadlightsEnabled(true);
+
+        if (!player.isLocal)
+        {
+            return;
+        }
+
+        Networking.SetOwner(player, gameObject);
+        _steerInput = 0f;
+        _throttleInput = 0f;
+        _currentSpeed = 0f;
+        _routeIndex = 0;
+        _routeCompleted = false;
+
+        if (driveMode == CarDriveMode.Manual)
+        {
+            _engineRunning = true;
+            _engineReadyTime = Time.time + engineStartDelay;
+        }
+        else
+        {
+            _engineRunning = false;
+            _engineReadyTime = 0f;
+        }
+
+        RequestSerialization();
+    }
+
+    public void OnSeatExited(CarSeatStation seat, VRCPlayerApi player)
+    {
+        if (!Utilities.IsValid(player))
+        {
+            return;
+        }
+
+        if (player.isLocal)
+        {
+            _localAutoSeated = false;
+            _autoSeatRetryCount = 0;
+            SendCustomEventDelayedFrames(nameof(TryAutoSeatLocalPlayer), 5);
+        }
+
+        if (seat != driverSeat || player.playerId != _driverPlayerId)
         {
             return;
         }
 
         _driverPlayerId = -1;
+        SetHeadlightsEnabled(false);
         _steerInput = 0f;
         _throttleInput = 0f;
 
         if (stopWhenDriverExits)
         {
+            Debug.Log("[CarVehicleController] OnSeatExited stopping engine. playerId=" + player.playerId +
+                      ", isLocal=" + player.isLocal +
+                      ", currentSpeed=" + _currentSpeed);
             _engineRunning = false;
         }
 
@@ -148,13 +267,42 @@ public class CarVehicleController : UdonSharpBehaviour
 
     public void StartVehicle()
     {
-        if (!Networking.IsOwner(gameObject))
+        int routeCount = routePoints != null ? routePoints.Length : 0;
+        bool isOwner = Networking.IsOwner(gameObject);
+        bool hasActiveDriver = HasActiveDriver();
+        bool hasRoute = HasRouteAvailable();
+        Debug.Log("[CarVehicleController] StartVehicle called. isOwner=" + isOwner +
+                  ", hasActiveDriver=" + hasActiveDriver +
+                  ", driveMode=" + driveMode +
+                  ", hasRoute=" + hasRoute +
+                  ", routeCompleted=" + _routeCompleted +
+                  ", routeIndex=" + _routeIndex +
+                  ", routeCount=" + routeCount);
+
+        if (!isOwner || !hasActiveDriver)
         {
+            Debug.Log("[CarVehicleController] StartVehicle rejected: missing ownership or active driver.");
             return;
+        }
+
+        if (driveMode == CarDriveMode.AutoRoute)
+        {
+            if (!hasRoute || _routeCompleted)
+            {
+                Debug.Log("[CarVehicleController] StartVehicle rejected: autoroute unavailable or already completed.");
+                return;
+            }
+
+            _routeIndex = Mathf.Clamp(_routeIndex, 0, routePoints.Length - 1);
         }
 
         _engineRunning = true;
         _engineReadyTime = Time.time + engineStartDelay;
+        _debugHasStepState = false;
+        _debugLoggedLowSpeed = false;
+        _debugLoggedMovement = false;
+        _debugLoggedPendingEngine = false;
+        _debugLoggedOwnershipLoss = false;
         RequestSerialization();
     }
 
@@ -162,22 +310,24 @@ public class CarVehicleController : UdonSharpBehaviour
     {
         if (!Networking.IsOwner(gameObject))
         {
+            Debug.Log("[CarVehicleController] StopVehicle ignored: local is not owner.");
             return;
         }
 
+        Debug.Log("[CarVehicleController] StopVehicle called. currentSpeed=" + _currentSpeed +
+                  ", routeIndex=" + _routeIndex +
+                  ", routeCompleted=" + _routeCompleted +
+                  ", driverPlayerId=" + _driverPlayerId);
         _engineRunning = false;
         _steerInput = 0f;
         _throttleInput = 0f;
         RequestSerialization();
     }
 
-    public override void InputUse(bool value, UdonInputEventArgs args)
+    public void ToggleVehicle()
     {
-        if (!value || !IsLocalDriver())
-        {
-            return;
-        }
-
+        Debug.Log("[CarVehicleController] ToggleVehicle called. engineRunning=" + _engineRunning +
+                  ", isLocalDriver=" + IsLocalDriver());
         if (_engineRunning)
         {
             StopVehicle();
@@ -186,6 +336,24 @@ public class CarVehicleController : UdonSharpBehaviour
         {
             StartVehicle();
         }
+    }
+
+    public override void InputUse(bool value, UdonInputEventArgs args)
+    {
+        Debug.Log("[CarVehicleController] InputUse received. value=" + value +
+                  ", isLocalDriver=" + IsLocalDriver() +
+                  ", engineRunning=" + _engineRunning);
+        if (!value || !IsLocalDriver())
+        {
+            return;
+        }
+
+        if (driveMode == CarDriveMode.AutoRoute)
+        {
+            return;
+        }
+
+        ToggleVehicle();
     }
 
     public override void InputMoveHorizontal(float value, UdonInputEventArgs args)
@@ -215,6 +383,14 @@ public class CarVehicleController : UdonSharpBehaviour
 
     public override void OnOwnershipTransferred(VRCPlayerApi player)
     {
+        VRCPlayerApi localPlayer = Networking.LocalPlayer;
+        int newOwnerId = Utilities.IsValid(player) ? player.playerId : -1;
+        int localPlayerId = Utilities.IsValid(localPlayer) ? localPlayer.playerId : -1;
+        Debug.Log("[CarVehicleController] OnOwnershipTransferred. newOwnerId=" + newOwnerId +
+                  ", localPlayerId=" + localPlayerId +
+                  ", localIsOwner=" + Networking.IsOwner(gameObject) +
+                  ", driverPlayerId=" + _driverPlayerId);
+
         _steerInput = 0f;
         _throttleInput = 0f;
 
@@ -232,14 +408,52 @@ public class CarVehicleController : UdonSharpBehaviour
         }
 
         _driverPlayerId = -1;
+        SetHeadlightsEnabled(false);
         _steerInput = 0f;
         _throttleInput = 0f;
+        Debug.Log("[CarVehicleController] OnPlayerLeft stopping engine. playerId=" + player.playerId);
         _engineRunning = false;
 
         if (Networking.IsOwner(gameObject))
         {
             RequestSerialization();
         }
+    }
+
+    private CarSeatStation GetAssignedSeat(VRCPlayerApi player)
+    {
+        if (CanPlayerDrive(player) && driverSeat != null)
+        {
+            return driverSeat;
+        }
+
+        if (passengerSeats == null || passengerSeats.Length == 0)
+        {
+            return null;
+        }
+
+        int passengerIndex = player.playerId - 2;
+        if (passengerIndex < 0)
+        {
+            passengerIndex = 0;
+        }
+        else if (passengerIndex >= passengerSeats.Length)
+        {
+            passengerIndex = passengerSeats.Length - 1;
+        }
+
+        return passengerSeats[passengerIndex];
+    }
+
+    private void ScheduleAutoSeatRetry()
+    {
+        if (_localAutoSeated || _autoSeatRetryCount >= MaxAutoSeatRetries)
+        {
+            return;
+        }
+
+        _autoSeatRetryCount++;
+        SendCustomEventDelayedFrames(nameof(TryAutoSeatLocalPlayer), 10);
     }
 
     private bool IsLocalDriver()
@@ -255,9 +469,39 @@ public class CarVehicleController : UdonSharpBehaviour
         return _driverPlayerId >= 0;
     }
 
+    private void SetHeadlightsEnabled(bool enabled)
+    {
+        if (headlights == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < headlights.Length; i++)
+        {
+            Light headlight = headlights[i];
+            if (headlight == null)
+            {
+                continue;
+            }
+
+            headlight.enabled = enabled;
+        }
+    }
+
     private void StepVehicle(float deltaTime)
     {
         bool canMove = _engineRunning && HasActiveDriver() && Time.time >= _engineReadyTime;
+
+        if (!_debugHasStepState || canMove != _debugLastCanMove)
+        {
+            Debug.Log("[CarVehicleController] StepVehicle state. engineRunning=" + _engineRunning +
+                      ", hasActiveDriver=" + HasActiveDriver() +
+                      ", engineReady=" + (Time.time >= _engineReadyTime) +
+                      ", canMove=" + canMove +
+                      ", currentSpeed=" + _currentSpeed);
+            _debugHasStepState = true;
+            _debugLastCanMove = canMove;
+        }
 
         float driveInput = 0f;
         float steerInput = 0f;
@@ -328,6 +572,11 @@ public class CarVehicleController : UdonSharpBehaviour
     {
         if (Mathf.Abs(_currentSpeed) < 0.001f)
         {
+            if (_engineRunning && !_debugLoggedLowSpeed)
+            {
+                Debug.Log("[CarVehicleController] UpdatePosition skipped: currentSpeed too low (" + _currentSpeed + ").");
+                _debugLoggedLowSpeed = true;
+            }
             return;
         }
 
@@ -340,14 +589,25 @@ public class CarVehicleController : UdonSharpBehaviour
         }
 
         flatForward.Normalize();
-        transform.position += flatForward * (_currentSpeed * deltaTime);
+        Vector3 delta = flatForward * (_currentSpeed * deltaTime);
+        if (!_debugLoggedMovement)
+        {
+            Debug.Log("[CarVehicleController] UpdatePosition moving. delta=" + delta +
+                      ", currentSpeed=" + _currentSpeed +
+                      ", positionBefore=" + transform.position);
+            _debugLoggedMovement = true;
+        }
+
+        transform.position += delta;
     }
 
     private float GetAutoRouteSteer()
     {
-        if (routePoints == null || routePoints.Length == 0)
+        if (!HasRouteAvailable())
         {
+            Debug.Log("[CarVehicleController] GetAutoRouteSteer stopping engine: route unavailable.");
             _engineRunning = false;
+            _routeCompleted = true;
             RequestSerialization();
             return 0f;
         }
@@ -366,8 +626,13 @@ public class CarVehicleController : UdonSharpBehaviour
         if (toTarget.magnitude <= waypointReachDistance)
         {
             AdvanceRouteIndex();
-            targetPoint = routePoints[_routeIndex];
 
+            if (!_engineRunning || !HasRouteAvailable())
+            {
+                return 0f;
+            }
+
+            targetPoint = routePoints[_routeIndex];
             if (!Utilities.IsValid(targetPoint))
             {
                 return 0f;
@@ -389,9 +654,11 @@ public class CarVehicleController : UdonSharpBehaviour
 
     private void AdvanceRouteIndex()
     {
-        if (routePoints == null || routePoints.Length == 0)
+        if (!HasRouteAvailable())
         {
+            Debug.Log("[CarVehicleController] AdvanceRouteIndex stopping engine: route unavailable.");
             _engineRunning = false;
+            _routeCompleted = true;
             return;
         }
 
@@ -404,11 +671,13 @@ public class CarVehicleController : UdonSharpBehaviour
         if (loopRoute)
         {
             _routeIndex = 0;
+            return;
         }
-        else
-        {
-            _engineRunning = false;
-        }
+
+        Debug.Log("[CarVehicleController] AdvanceRouteIndex completed final waypoint. routeIndex=" + _routeIndex);
+        _engineRunning = false;
+        _routeCompleted = true;
+        RequestSerialization();
     }
 
     private void SnapToGround()
@@ -424,4 +693,10 @@ public class CarVehicleController : UdonSharpBehaviour
         }
     }
 }
+
+
+
+
+
+
 
