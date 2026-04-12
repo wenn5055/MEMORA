@@ -73,10 +73,6 @@ crashlytics-build.properties
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
 /[Aa]ssets/[Ss]creenshots
-/[Aa]ssets/[Ss]tandard[Aa]ssets
-/[Aa]ssets/[Ss]tandard[Aa]ssets.meta
-/[Aa]ssets/[Tt]errain[Ss]ample[Aa]ssets
-/[Aa]ssets/[Tt]errain[Ss]ample[Aa]ssets.meta
 /Assets/Scripts/SkydomeFollowCamera.cs
 /Assets/Scripts/SkydomeFollowCamera.cs.meta
 /Assets/Screenshots.meta
