@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.38607463, g: 0.4810692, b: 0.61350745, a: 1}
+  m_IndirectSpecularColor: {r: 0, g: 0, b: 0, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -7969,7 +7969,7 @@ MonoBehaviour:
   ExactGrip: {fileID: 0}
   allowManipulationWhenEquipped: 0
   orientation: 2
-  AutoHold: 1
+  AutoHold: 3
   InteractionText: Equip Pointer
   UseText: Switch On
   useEventBroadcastType: 0
@@ -14642,7 +14642,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   launchedFromSDKPipeline: 0
   completedSDKPipeline: 0
-  blueprintId: wrld_bc64c899-1f4c-43a0-9ae9-3cc40dc1ca71
+  blueprintId: wrld_67469b8f-8351-4a19-9437-dc30ec89d183
   contentType: 1
   assetBundleUnityVersion: 
   fallbackStatus: 0
@@ -14698,14 +14698,13 @@ MonoBehaviour:
   - {fileID: 919132149155446097, guid: 872845ac0a2b8c6469d5e67ad0aba08e, type: 3}
   DynamicMaterials:
   - {fileID: 2100000, guid: 93caadf4359ae8143aad35b3145d31af, type: 2}
-  - {fileID: 2100000, guid: f43db235a1473d94a9e826dce4decb49, type: 2}
   - {fileID: 2100000, guid: 8b150514582abbb43925bff3935e9a1e, type: 2}
-  - {fileID: 2100000, guid: 5a12e63f2fb44804fa718ce2bb87b30a, type: 2}
-  - {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
-  - {fileID: 2100000, guid: 48e92d909f57aed4c9b9ccda5227f55d, type: 2}
-  - {fileID: 2100000, guid: 5d3aaaa0b6664254db08e41c73462e24, type: 2}
-  - {fileID: 2100000, guid: dfc63a6f99d651a4b86371da130e1ff2, type: 2}
   - {fileID: 2100000, guid: ecf772e37595083498c4fcd8a0eda415, type: 2}
+  - {fileID: 2100000, guid: 5a12e63f2fb44804fa718ce2bb87b30a, type: 2}
+  - {fileID: 2100000, guid: f43db235a1473d94a9e826dce4decb49, type: 2}
+  - {fileID: 2100000, guid: dfc63a6f99d651a4b86371da130e1ff2, type: 2}
+  - {fileID: 2100000, guid: 48e92d909f57aed4c9b9ccda5227f55d, type: 2}
+  - {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
   LightMapsNear: []
   LightMapsFar: []
   LightMode: 0
@@ -14764,13 +14763,6 @@ MonoBehaviour:
     SerializedTypeNames:
     - VRC.Udon.UdonBehaviour
     - VRC.Udon.UdonBehaviour
-  - gameObject: {fileID: 0}
-    ID: 12
-    SerializedTypeNames:
-    - VRC.Udon.UdonBehaviour
-    - VRC.SDK3.Components.VRCPickup
-    - VRC.SDK3.Components.VRCObjectSync
-    - VRC.SDK3.Components.VRCPlayerObject
   - gameObject: {fileID: 797063220}
     ID: 13
     SerializedTypeNames:
@@ -14882,7 +14874,6 @@ MonoBehaviour:
   portraitCameraRotationOffset: {x: 0, y: 1, z: 0, w: -0.00000004371139}
   PlayerPersistence:
   - {fileID: 509557655}
-  - {fileID: 0}
   - {fileID: 2075313759}
   - {fileID: 797063222}
   NavigationAreas: []
@@ -15203,6 +15194,11 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1236133372}
     m_Modifications:
+    - target: {fileID: 98712345837542848, guid: b0b528a5c57654b45a513f21e10cd82d,
+        type: 3}
+      propertyPath: AutoHold
+      value: 3
+      objectReference: {fileID: 0}
     - target: {fileID: 98712345837542848, guid: b0b528a5c57654b45a513f21e10cd82d,
         type: 3}
       propertyPath: m_Enabled
@@ -27260,6 +27256,11 @@ PrefabInstance:
         type: 3}
       propertyPath: UseText
       value: Draw
+      objectReference: {fileID: 0}
+    - target: {fileID: 819886750308356048, guid: 46a5c5e08ee9bb244957b6295f06f261,
+        type: 3}
+      propertyPath: AutoHold
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 819886750308356048, guid: 46a5c5e08ee9bb244957b6295f06f261,
         type: 3}
