@@ -1,6 +1,5 @@
 using UdonSharp;
 using UnityEngine;
-using VRC.SDK3.Components;
 using VRC.SDKBase;
 
 public class FireflyCatchBoxController : UdonSharpBehaviour
@@ -18,9 +17,6 @@ public class FireflyCatchBoxController : UdonSharpBehaviour
 
     [UdonSynced] private int capturedMask;
 
-    private VRCPickup pickup;
-    private Collider hitbox;
-    private Rigidbody rb;
     private Transform[] containedTransforms;
     private Vector3[] containedRestPositions;
     private Quaternion[] containedRestRotations;
@@ -234,10 +230,6 @@ public class FireflyCatchBoxController : UdonSharpBehaviour
         {
             return;
         }
-
-        pickup = (VRCPickup)GetComponent(typeof(VRCPickup));
-        hitbox = (Collider)GetComponent(typeof(BoxCollider));
-        rb = (Rigidbody)GetComponent(typeof(Rigidbody));
 
         if (containedFireflies == null)
         {
