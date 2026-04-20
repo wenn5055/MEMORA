@@ -25,28 +25,27 @@ public class CarAutoRouteStarter : UdonSharpBehaviour
             indicatorRenderer = (Renderer)GetComponent(typeof(Renderer));
         }
 
-        bool canUse = vehicleController != null && vehicleController.CanLocalPlayerToggleVehicle();
-        if (interactionCollider != null)
-        {
-            interactionCollider.enabled = canUse;
-        }
-
-        _lastCanUse = canUse;
-        if (indicatorRenderer != null && indicatorRenderer.material != null)
-        {
-            Color color = disabledColor;
-            if (canUse)
-            {
-                color = vehicleController != null && vehicleController.IsRouteRunning() ? runningColor : idleColor;
-            }
-
-            indicatorRenderer.material.color = color;
-        }
+        RefreshState();
     }
 
     private void Update()
     {
-        bool canUse = vehicleController != null && vehicleController.CanLocalPlayerToggleVehicle();
+        RefreshState();
+    }
+
+    public override void Interact()
+    {
+        if (vehicleController == null || !vehicleController.CanLocalPlayerStartRoute())
+        {
+            return;
+        }
+
+        vehicleController.StartVehicle();
+    }
+
+    private void RefreshState()
+    {
+        bool canUse = vehicleController != null && vehicleController.CanLocalPlayerStartRoute();
         if (interactionCollider != null && _lastCanUse != canUse)
         {
             interactionCollider.enabled = canUse;
@@ -56,32 +55,16 @@ public class CarAutoRouteStarter : UdonSharpBehaviour
         if (indicatorRenderer != null && indicatorRenderer.material != null)
         {
             Color color = disabledColor;
-            if (canUse)
+            if (vehicleController != null && vehicleController.IsRouteRunning())
             {
-                color = vehicleController != null && vehicleController.IsRouteRunning() ? runningColor : idleColor;
+                color = runningColor;
+            }
+            else if (canUse)
+            {
+                color = idleColor;
             }
 
             indicatorRenderer.material.color = color;
         }
-    }
-
-public override void Interact()
-    {
-        bool hasController = vehicleController != null;
-        bool canToggle = hasController && vehicleController.CanLocalPlayerToggleVehicle();
-        bool routeRunning = hasController && vehicleController.IsRouteRunning();
-        bool hasRoute = hasController && vehicleController.HasRouteAvailable();
-        Debug.Log("[CarAutoRouteStarter] Interact called. object=" + gameObject.name +
-                  ", hasController=" + hasController +
-                  ", canToggle=" + canToggle +
-                  ", routeRunning=" + routeRunning +
-                  ", hasRoute=" + hasRoute);
-
-        if (vehicleController == null || !vehicleController.CanLocalPlayerToggleVehicle())
-        {
-            return;
-        }
-
-        vehicleController.ToggleVehicle();
     }
 }

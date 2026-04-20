@@ -17,7 +17,6 @@ public class CarSeatStation : UdonSharpBehaviour
     public Collider seatCollider;
     public VRCStation station;
 
-    private bool _lastLocalAccess = true;
     private bool _localSeatOccupied;
 
     private void Start()
@@ -99,7 +98,6 @@ public class CarSeatStation : UdonSharpBehaviour
         }
 
         vehicleController.OnSeatEntered(this, player);
-        RefreshLocalAccess();
     }
 
     private void HandleSeatExited(VRCPlayerApi player)
@@ -123,24 +121,13 @@ public class CarSeatStation : UdonSharpBehaviour
         {
             vehicleController.OnSeatExited(this, player);
         }
-
-        RefreshLocalAccess();
     }
 
     private void RefreshLocalAccess()
     {
-        bool allowed = true;
-
-        if (seatRole == CarSeatRole.Driver && vehicleController != null)
+        if (seatCollider != null && seatCollider.enabled)
         {
-            allowed = vehicleController.CanLocalPlayerUseDriverSeat();
+            seatCollider.enabled = false;
         }
-
-        if (seatCollider != null && allowed != _lastLocalAccess)
-        {
-            seatCollider.enabled = allowed;
-        }
-
-        _lastLocalAccess = allowed;
     }
 }

@@ -1,0 +1,60 @@
+﻿Scene Triangle Report - Fireflies
+Generated: 2026-04-13 09:53:24
+Total Triangles: 63,174
+Renderable Objects: 29
+Unique Mesh Assets: 6
+
+Top 20 Objects
+Triangles	Type	Active	Enabled	Mesh	Object Path
+7032	MeshFilter	True	True	Railing_Outer_Mesh	fireflies_notrees/Railing_Outer
+6841	MeshFilter	True	True	Mesh_0	fireflies_notrees/RailingFirefliesDetail/Firefly_01/Firefly
+6841	MeshFilter	True	True	Mesh_0	fireflies_notrees/RailingFirefliesDetail/Firefly_02/Firefly (1)
+6841	MeshFilter	True	True	Mesh_0	fireflies_notrees/RailingFirefliesDetail/Firefly_03/Firefly (2)
+6841	MeshFilter	True	True	Mesh_0	fireflies_notrees/RailingFirefliesDetail/Firefly_04/Firefly (3)
+6624	MeshFilter	True	True	Railing_Inner_Mesh	fireflies_notrees/Railing_Inner
+5068	MeshFilter	True	True	ExtRailing_Inner_Mesh	fireflies_notrees/ExtRailing_Inner
+4876	MeshFilter	True	True	ExtRailing_Outer_Mesh	fireflies_notrees/ExtRailing_Outer
+1728	MeshFilter	True	True	SouthRailing_Inner_Mesh	fireflies_notrees/SouthRailing_Inner
+1696	MeshFilter	False	True	Hillside_Mesh	fireflies_notrees/Hillside
+1656	MeshFilter	True	True	SouthRailing_Outer_Mesh	fireflies_notrees/SouthRailing_Outer
+1186	MeshFilter	False	True	ExtHillside_Mesh	fireflies_notrees/ExtHillside
+768	MeshFilter	True	True	Sphere	fireflies_notrees/RailingFirefliesDetail/Firefly_01/Abdomen
+768	MeshFilter	True	True	Sphere	fireflies_notrees/RailingFirefliesDetail/Firefly_02/Abdomen (1)
+768	MeshFilter	True	True	Sphere	fireflies_notrees/RailingFirefliesDetail/Firefly_03/Abdomen (2)
+768	MeshFilter	True	True	Sphere	fireflies_notrees/RailingFirefliesDetail/Firefly_04/Abdomen (3)
+544	MeshFilter	False	True	NorthSlope_Mesh	fireflies_notrees/NorthSlope
+484	MeshFilter	True	True	BoardwalkDeck_Mesh	fireflies_notrees/BoardwalkDeck
+402	MeshFilter	True	True	ExtDeck_Mesh	fireflies_notrees/ExtBoardwalkDeck
+400	MeshFilter	True	True	KitchenGlasses.001	Collection_1
+
+All Objects
+Triangles	Type	Active	Enabled	Mesh	Object Path
+7032	MeshFilter	True	True	Railing_Outer_Mesh	fireflies_notrees/Railing_Outer
+6841	MeshFilter	True	True	Mesh_0	fireflies_notrees/RailingFirefliesDetail/Firefly_01/Firefly
+6841	MeshFilter	True	True	Mesh_0	fireflies_notrees/RailingFirefliesDetail/Firefly_02/Firefly (1)
+6841	MeshFilter	True	True	Mesh_0	fireflies_notrees/RailingFirefliesDetail/Firefly_03/Firefly (2)
+6841	MeshFilter	True	True	Mesh_0	fireflies_notrees/RailingFirefliesDetail/Firefly_04/Firefly (3)
+6624	MeshFilter	True	True	Railing_Inner_Mesh	fireflies_notrees/Railing_Inner
+5068	MeshFilter	True	True	ExtRailing_Inner_Mesh	fireflies_notrees/ExtRailing_Inner
+4876	MeshFilter	True	True	ExtRailing_Outer_Mesh	fireflies_notrees/ExtRailing_Outer
+1728	MeshFilter	True	True	SouthRailing_Inner_Mesh	fireflies_notrees/SouthRailing_Inner
+1696	MeshFilter	False	True	Hillside_Mesh	fireflies_notrees/Hillside
+1656	MeshFilter	True	True	SouthRailing_Outer_Mesh	fireflies_notrees/SouthRailing_Outer
+1186	MeshFilter	False	True	ExtHillside_Mesh	fireflies_notrees/ExtHillside
+768	MeshFilter	True	True	Sphere	fireflies_notrees/RailingFirefliesDetail/Firefly_01/Abdomen
+768	MeshFilter	True	True	Sphere	fireflies_notrees/RailingFirefliesDetail/Firefly_02/Abdomen (1)
+768	MeshFilter	True	True	Sphere	fireflies_notrees/RailingFirefliesDetail/Firefly_03/Abdomen (2)
+768	MeshFilter	True	True	Sphere	fireflies_notrees/RailingFirefliesDetail/Firefly_04/Abdomen (3)
+544	MeshFilter	False	True	NorthSlope_Mesh	fireflies_notrees/NorthSlope
+484	MeshFilter	True	True	BoardwalkDeck_Mesh	fireflies_notrees/BoardwalkDeck
+402	MeshFilter	True	True	ExtDeck_Mesh	fireflies_notrees/ExtBoardwalkDeck
+400	MeshFilter	True	True	KitchenGlasses.001	Collection_1
+242	MeshFilter	True	True	SouthDeck_Mesh	fireflies_notrees/SouthBoardwalkDeck
+216	MeshFilter	True	True	Pillars_Mesh	fireflies_notrees/SupportPillars
+180	MeshFilter	True	True	ExtPillars_Mesh	fireflies_notrees/ExtSupportPillars
+80	MeshFilter	True	True	Cylinder	Tools/LaserPointer2.0/Visual
+80	MeshFilter	True	True	Cylinder	Tools/SimplePenSystem (1)/Pen
+80	MeshFilter	True	True	Cylinder	Tools/SimplePenSystem (1)/Pen/Color
+80	MeshFilter	True	True	waterPlaneMesh	WaterProNighttime
+72	MeshFilter	True	True	SouthPillars_Mesh	fireflies_notrees/SouthSupportPillars
+12	MeshFilter	True	True	Studio_canvas	Tools/Eraser (1)

@@ -12,79 +12,72 @@ public enum CarDriveMode
 [AddComponentMenu("VRChat/Car/Car Vehicle Controller")]
 public class CarVehicleController : UdonSharpBehaviour
 {
-    private const int MaxAutoSeatRetries = 20;
+    private const int StartupGroundingFrames = 120;
+    private const float StartupGroundProbeHeight = 1000f;
+    private const float StartupGroundProbeDistance = 5000f;
+    private const int NoTerminalIndex = -1;
+    private const float SeatUseDebounceSeconds = 0.35f;
 
     public CarDriveMode driveMode = CarDriveMode.Manual;
 
     public CarSeatStation driverSeat;
     public CarSeatStation[] passengerSeats;
 
-    public float maxForwardSpeed = 10f;
+    public float maxForwardSpeed = 5.5f;
     public float maxReverseSpeed = 4f;
-    public float acceleration = 6f;
-    public float brakeDeceleration = 10f;
-    public float steerRate = 65f;
+    public float acceleration = 2.5f;
+    public float brakeDeceleration = 5f;
+    public float steerRate = 32f;
     public float drag = 3f;
-    public float rideHeight = 0.35f;
+    public float rideHeight = 0.05f;
     public LayerMask groundMask = ~0;
     public Transform[] routePoints;
     public Light[] headlights;
     public bool loopRoute = true;
-    public float waypointReachDistance = 1.5f;
+    public float waypointReachDistance = 4f;
     public float engineStartDelay = 0.2f;
     public bool stopWhenDriverExits = true;
     public bool allowMasterFallback = true;
     public float groundProbeHeight = 3f;
     public float groundProbeDistance = 10f;
+    public float groundSmoothTime = 0.22f;
+    public float groundDeadZone = 0.015f;
+    public float steerSmoothTime = 0.35f;
+    public float autoRouteSlowdownDistance = 8f;
+    public float autoRouteMinSpeedFactor = 0.35f;
+    public float autoRouteTurnMinSpeedFactor = 0.55f;
 
     private int _driverPlayerId = -1;
+    private int[] _seatOccupants;
     private bool _engineRunning;
     private bool _routeCompleted;
-    private bool _localAutoSeated;
-    private int _autoSeatRetryCount;
-
     private float _currentSpeed;
     private float _steerInput;
     private float _throttleInput;
     private float _engineReadyTime;
     private int _routeIndex;
-    private bool _debugHasStepState;
-    private bool _debugLastCanMove;
-    private bool _debugLoggedLowSpeed;
-    private bool _debugLoggedMovement;
-    private bool _debugLoggedPendingEngine;
-    private bool _debugLoggedOwnershipLoss;
+    private int _startupGroundingFramesRemaining;
+    private int _dockedTerminalIndex = NoTerminalIndex;
+    private int _routeDirection = 1;
+    private float _ignoreUseUntilTime;
+    private bool _groundYInitialized;
+    private float _smoothedSteerInput;
+    private float _steerVelocity;
+    private float _groundYVelocity;
 
     private void Start()
     {
-        SnapToGround();
+        EnsureSeatState();
+        InitializeRouteState();
+        _startupGroundingFramesRemaining = StartupGroundingFrames;
+        SnapToGround(StartupGroundProbeHeight, StartupGroundProbeDistance);
         SetHeadlightsEnabled(false);
-        _localAutoSeated = false;
-        _autoSeatRetryCount = 0;
-        SendCustomEventDelayedFrames(nameof(TryAutoSeatLocalPlayer), 2);
+        SendCustomEventDelayedFrames(nameof(EnsureGroundedDuringStartup), 1);
     }
 
     private void Update()
     {
-        bool isOwner = Networking.IsOwner(gameObject);
-        if (_engineRunning && isOwner && Time.time < _engineReadyTime && !_debugLoggedPendingEngine)
-        {
-            Debug.Log("[CarVehicleController] Update waiting for engine ready. time=" + Time.time +
-                      ", engineReadyTime=" + _engineReadyTime +
-                      ", driverPlayerId=" + _driverPlayerId);
-            _debugLoggedPendingEngine = true;
-        }
-
-        if (_engineRunning && !isOwner && !_debugLoggedOwnershipLoss)
-        {
-            VRCPlayerApi localPlayer = Networking.LocalPlayer;
-            int localPlayerId = Utilities.IsValid(localPlayer) ? localPlayer.playerId : -1;
-            Debug.Log("[CarVehicleController] Update skipped: local is not owner while engineRunning. localPlayerId=" + localPlayerId +
-                      ", driverPlayerId=" + _driverPlayerId);
-            _debugLoggedOwnershipLoss = true;
-        }
-
-        if (isOwner)
+        if (Networking.IsOwner(gameObject))
         {
             StepVehicle(Time.deltaTime);
         }
@@ -92,7 +85,7 @@ public class CarVehicleController : UdonSharpBehaviour
 
     public bool CanLocalPlayerUseDriverSeat()
     {
-        return CanPlayerDrive(Networking.LocalPlayer);
+        return CanLocalPlayerEnterSeat(driverSeat);
     }
 
     public bool CanPlayerDrive(VRCPlayerApi player)
@@ -112,7 +105,7 @@ public class CarVehicleController : UdonSharpBehaviour
 
     public bool HasRouteAvailable()
     {
-        return routePoints != null && routePoints.Length > 0;
+        return routePoints != null && routePoints.Length > 1;
     }
 
     public bool IsRouteRunning()
@@ -120,58 +113,150 @@ public class CarVehicleController : UdonSharpBehaviour
         return _engineRunning;
     }
 
-    public bool IsLocalDriverInControl()
+    public bool IsRouteCompleted()
     {
-        return IsLocalDriver();
+        return _routeCompleted;
     }
 
     public bool CanLocalPlayerStartRoute()
     {
-        return IsLocalDriver() && !_routeCompleted && HasRouteAvailable();
+        VRCPlayerApi localPlayer = Networking.LocalPlayer;
+        if (!Utilities.IsValid(localPlayer))
+        {
+            return false;
+        }
+
+        return IsSeatOccupiedByLocalPlayer(driverSeat) &&
+               CanPlayerDrive(localPlayer) &&
+               !_engineRunning &&
+               IsDockedAtTerminal() &&
+               HasRouteTravelFromDockedTerminal() &&
+               Networking.IsOwner(gameObject);
     }
 
     public bool CanLocalPlayerToggleVehicle()
     {
-        if (!IsLocalDriver())
+        return CanLocalPlayerStartRoute();
+    }
+
+    public CarSeatStation GetLocalOccupiedSeat()
+    {
+        VRCPlayerApi localPlayer = Networking.LocalPlayer;
+        if (!Utilities.IsValid(localPlayer))
+        {
+            return null;
+        }
+
+        if (IsSeatOccupiedByLocalPlayer(driverSeat))
+        {
+            return driverSeat;
+        }
+
+        if (passengerSeats == null)
+        {
+            return null;
+        }
+
+        for (int i = 0; i < passengerSeats.Length; i++)
+        {
+            CarSeatStation seat = passengerSeats[i];
+            if (IsSeatOccupiedByLocalPlayer(seat))
+            {
+                return seat;
+            }
+        }
+
+        return null;
+    }
+
+    public bool CanLocalPlayerEnterSeat(CarSeatStation seat)
+    {
+        VRCPlayerApi localPlayer = Networking.LocalPlayer;
+        if (seat == null || !Utilities.IsValid(localPlayer))
         {
             return false;
         }
 
         if (_engineRunning)
         {
-            return true;
+            return false;
         }
 
-        if (driveMode == CarDriveMode.AutoRoute)
+        if (IsLocalPlayerSeatedInAnySeat())
         {
-            return !_routeCompleted && HasRouteAvailable();
+            return false;
         }
 
-        return true;
+        if (IsSeatOccupied(seat))
+        {
+            return false;
+        }
+
+        if (seat.IsDriverSeat() && !CanPlayerDrive(localPlayer))
+        {
+            return false;
+        }
+
+        return seat.station != null;
     }
 
-    public void TryAutoSeatLocalPlayer()
+    public bool CanLocalPlayerExitSeat(CarSeatStation seat)
     {
-        if (_localAutoSeated)
+        VRCPlayerApi localPlayer = Networking.LocalPlayer;
+        if (seat == null || !Utilities.IsValid(localPlayer))
         {
-            return;
+            return false;
         }
 
+        if (_engineRunning)
+        {
+            return false;
+        }
+
+        return IsSeatOccupiedByLocalPlayer(seat) && seat.station != null;
+    }
+
+    public bool CanLocalPlayerExitCurrentSeat()
+    {
+        return CanLocalPlayerExitSeat(GetLocalOccupiedSeat());
+    }
+
+    public bool IsSeatOccupied(CarSeatStation seat)
+    {
+        return GetSeatOccupantId(seat) >= 0;
+    }
+
+    public bool IsSeatOccupiedByLocalPlayer(CarSeatStation seat)
+    {
+        VRCPlayerApi localPlayer = Networking.LocalPlayer;
+        return Utilities.IsValid(localPlayer) && GetSeatOccupantId(seat) == localPlayer.playerId;
+    }
+
+    public bool IsSeatOccupiedByOtherPlayer(CarSeatStation seat)
+    {
+        VRCPlayerApi localPlayer = Networking.LocalPlayer;
+        int occupantId = GetSeatOccupantId(seat);
+        return occupantId >= 0 && (!Utilities.IsValid(localPlayer) || occupantId != localPlayer.playerId);
+    }
+
+    public bool IsLocalPlayerSeatedInAnySeat()
+    {
         VRCPlayerApi localPlayer = Networking.LocalPlayer;
         if (!Utilities.IsValid(localPlayer))
         {
-            ScheduleAutoSeatRetry();
-            return;
+            return false;
         }
 
-        CarSeatStation assignedSeat = GetAssignedSeat(localPlayer);
-        if (assignedSeat == null || assignedSeat.station == null)
+        EnsureSeatState();
+        for (int i = 0; i < _seatOccupants.Length; i++)
         {
-            return;
+            if (_seatOccupants[i] == localPlayer.playerId)
+            {
+                return true;
+            }
         }
 
-        assignedSeat.station.UseStation(localPlayer);
-        ScheduleAutoSeatRetry();
+        return false;
     }
 
     public void OnSeatEntered(CarSeatStation seat, VRCPlayerApi player)
@@ -181,9 +266,11 @@ public class CarVehicleController : UdonSharpBehaviour
             return;
         }
 
+        SetSeatOccupant(seat, player.playerId);
+
         if (player.isLocal)
         {
-            _localAutoSeated = true;
+            _ignoreUseUntilTime = Time.time + SeatUseDebounceSeconds;
         }
 
         if (seat != driverSeat)
@@ -192,13 +279,6 @@ public class CarVehicleController : UdonSharpBehaviour
         }
 
         _driverPlayerId = player.playerId;
-
-        if (player.isLocal && !CanPlayerDrive(player))
-        {
-            driverSeat.SendCustomEvent(nameof(CarSeatStation.ForceLocalExit));
-            return;
-        }
-
         SetHeadlightsEnabled(true);
 
         if (!player.isLocal)
@@ -206,12 +286,16 @@ public class CarVehicleController : UdonSharpBehaviour
             return;
         }
 
+        if (!CanPlayerDrive(player))
+        {
+            driverSeat.SendCustomEvent(nameof(CarSeatStation.ForceLocalExit));
+            return;
+        }
+
         Networking.SetOwner(player, gameObject);
         _steerInput = 0f;
         _throttleInput = 0f;
         _currentSpeed = 0f;
-        _routeIndex = 0;
-        _routeCompleted = false;
 
         if (driveMode == CarDriveMode.Manual)
         {
@@ -222,6 +306,17 @@ public class CarVehicleController : UdonSharpBehaviour
         {
             _engineRunning = false;
             _engineReadyTime = 0f;
+
+            if (!HasRouteAvailable())
+            {
+                _dockedTerminalIndex = NoTerminalIndex;
+                _routeIndex = 0;
+                _routeDirection = 1;
+            }
+            else if (!IsDockedAtTerminal())
+            {
+                InitializeRouteState();
+            }
         }
 
         RequestSerialization();
@@ -229,17 +324,12 @@ public class CarVehicleController : UdonSharpBehaviour
 
     public void OnSeatExited(CarSeatStation seat, VRCPlayerApi player)
     {
-        if (!Utilities.IsValid(player))
+        if (seat == null || !Utilities.IsValid(player))
         {
             return;
         }
 
-        if (player.isLocal)
-        {
-            _localAutoSeated = false;
-            _autoSeatRetryCount = 0;
-            SendCustomEventDelayedFrames(nameof(TryAutoSeatLocalPlayer), 5);
-        }
+        ClearSeatOccupant(seat);
 
         if (seat != driverSeat || player.playerId != _driverPlayerId)
         {
@@ -253,10 +343,8 @@ public class CarVehicleController : UdonSharpBehaviour
 
         if (stopWhenDriverExits)
         {
-            Debug.Log("[CarVehicleController] OnSeatExited stopping engine. playerId=" + player.playerId +
-                      ", isLocal=" + player.isLocal +
-                      ", currentSpeed=" + _currentSpeed);
             _engineRunning = false;
+            _currentSpeed = 0f;
         }
 
         if (player.isLocal && Networking.IsOwner(gameObject))
@@ -267,42 +355,23 @@ public class CarVehicleController : UdonSharpBehaviour
 
     public void StartVehicle()
     {
-        int routeCount = routePoints != null ? routePoints.Length : 0;
-        bool isOwner = Networking.IsOwner(gameObject);
-        bool hasActiveDriver = HasActiveDriver();
-        bool hasRoute = HasRouteAvailable();
-        Debug.Log("[CarVehicleController] StartVehicle called. isOwner=" + isOwner +
-                  ", hasActiveDriver=" + hasActiveDriver +
-                  ", driveMode=" + driveMode +
-                  ", hasRoute=" + hasRoute +
-                  ", routeCompleted=" + _routeCompleted +
-                  ", routeIndex=" + _routeIndex +
-                  ", routeCount=" + routeCount);
-
-        if (!isOwner || !hasActiveDriver)
+        if (!CanLocalPlayerStartRoute())
         {
-            Debug.Log("[CarVehicleController] StartVehicle rejected: missing ownership or active driver.");
             return;
         }
 
-        if (driveMode == CarDriveMode.AutoRoute)
+        int nextRouteIndex = GetNextRouteIndexFromDockedTerminal();
+        if (nextRouteIndex < 0)
         {
-            if (!hasRoute || _routeCompleted)
-            {
-                Debug.Log("[CarVehicleController] StartVehicle rejected: autoroute unavailable or already completed.");
-                return;
-            }
-
-            _routeIndex = Mathf.Clamp(_routeIndex, 0, routePoints.Length - 1);
+            return;
         }
 
+        _routeDirection = GetDirectionForTerminal(_dockedTerminalIndex);
+        _routeIndex = nextRouteIndex;
+        _dockedTerminalIndex = NoTerminalIndex;
+        _routeCompleted = false;
         _engineRunning = true;
         _engineReadyTime = Time.time + engineStartDelay;
-        _debugHasStepState = false;
-        _debugLoggedLowSpeed = false;
-        _debugLoggedMovement = false;
-        _debugLoggedPendingEngine = false;
-        _debugLoggedOwnershipLoss = false;
         RequestSerialization();
     }
 
@@ -310,14 +379,9 @@ public class CarVehicleController : UdonSharpBehaviour
     {
         if (!Networking.IsOwner(gameObject))
         {
-            Debug.Log("[CarVehicleController] StopVehicle ignored: local is not owner.");
             return;
         }
 
-        Debug.Log("[CarVehicleController] StopVehicle called. currentSpeed=" + _currentSpeed +
-                  ", routeIndex=" + _routeIndex +
-                  ", routeCompleted=" + _routeCompleted +
-                  ", driverPlayerId=" + _driverPlayerId);
         _engineRunning = false;
         _steerInput = 0f;
         _throttleInput = 0f;
@@ -326,8 +390,6 @@ public class CarVehicleController : UdonSharpBehaviour
 
     public void ToggleVehicle()
     {
-        Debug.Log("[CarVehicleController] ToggleVehicle called. engineRunning=" + _engineRunning +
-                  ", isLocalDriver=" + IsLocalDriver());
         if (_engineRunning)
         {
             StopVehicle();
@@ -340,20 +402,63 @@ public class CarVehicleController : UdonSharpBehaviour
 
     public override void InputUse(bool value, UdonInputEventArgs args)
     {
-        Debug.Log("[CarVehicleController] InputUse received. value=" + value +
-                  ", isLocalDriver=" + IsLocalDriver() +
-                  ", engineRunning=" + _engineRunning);
-        if (!value || !IsLocalDriver())
+        if (!value || Time.time < _ignoreUseUntilTime)
         {
             return;
         }
 
-        if (driveMode == CarDriveMode.AutoRoute)
+        CarSeatStation localSeat = GetLocalOccupiedSeat();
+        if (localSeat == null)
         {
             return;
         }
 
-        ToggleVehicle();
+        if (driveMode == CarDriveMode.Manual)
+        {
+            if (localSeat == driverSeat && IsLocalDriver())
+            {
+                ToggleVehicle();
+            }
+
+            return;
+        }
+
+        if (localSeat == driverSeat && CanLocalPlayerStartRoute())
+        {
+            StartVehicle();
+        }
+    }
+
+    public override void InputGrab(bool value, UdonInputEventArgs args)
+    {
+        TryExitCurrentSeatFromSecondaryInput(value);
+    }
+
+    public override void InputDrop(bool value, UdonInputEventArgs args)
+    {
+        TryExitCurrentSeatFromSecondaryInput(value);
+    }
+
+    private void TryExitCurrentSeatFromSecondaryInput(bool value)
+    {
+        if (!value)
+        {
+            return;
+        }
+
+        CarSeatStation localSeat = GetLocalOccupiedSeat();
+        if (localSeat == null || !CanLocalPlayerExitSeat(localSeat))
+        {
+            return;
+        }
+
+        VRCPlayerApi localPlayer = Networking.LocalPlayer;
+        if (!Utilities.IsValid(localPlayer) || localSeat.station == null)
+        {
+            return;
+        }
+
+        localSeat.station.ExitStation(localPlayer);
     }
 
     public override void InputMoveHorizontal(float value, UdonInputEventArgs args)
@@ -383,14 +488,6 @@ public class CarVehicleController : UdonSharpBehaviour
 
     public override void OnOwnershipTransferred(VRCPlayerApi player)
     {
-        VRCPlayerApi localPlayer = Networking.LocalPlayer;
-        int newOwnerId = Utilities.IsValid(player) ? player.playerId : -1;
-        int localPlayerId = Utilities.IsValid(localPlayer) ? localPlayer.playerId : -1;
-        Debug.Log("[CarVehicleController] OnOwnershipTransferred. newOwnerId=" + newOwnerId +
-                  ", localPlayerId=" + localPlayerId +
-                  ", localIsOwner=" + Networking.IsOwner(gameObject) +
-                  ", driverPlayerId=" + _driverPlayerId);
-
         _steerInput = 0f;
         _throttleInput = 0f;
 
@@ -402,7 +499,14 @@ public class CarVehicleController : UdonSharpBehaviour
 
     public override void OnPlayerLeft(VRCPlayerApi player)
     {
-        if (!Utilities.IsValid(player) || player.playerId != _driverPlayerId)
+        if (!Utilities.IsValid(player))
+        {
+            return;
+        }
+
+        ClearSeatOccupantByPlayerId(player.playerId);
+
+        if (player.playerId != _driverPlayerId)
         {
             return;
         }
@@ -411,8 +515,8 @@ public class CarVehicleController : UdonSharpBehaviour
         SetHeadlightsEnabled(false);
         _steerInput = 0f;
         _throttleInput = 0f;
-        Debug.Log("[CarVehicleController] OnPlayerLeft stopping engine. playerId=" + player.playerId);
         _engineRunning = false;
+        _currentSpeed = 0f;
 
         if (Networking.IsOwner(gameObject))
         {
@@ -420,40 +524,20 @@ public class CarVehicleController : UdonSharpBehaviour
         }
     }
 
-    private CarSeatStation GetAssignedSeat(VRCPlayerApi player)
+    public void EnsureGroundedDuringStartup()
     {
-        if (CanPlayerDrive(player) && driverSeat != null)
-        {
-            return driverSeat;
-        }
-
-        if (passengerSeats == null || passengerSeats.Length == 0)
-        {
-            return null;
-        }
-
-        int passengerIndex = player.playerId - 2;
-        if (passengerIndex < 0)
-        {
-            passengerIndex = 0;
-        }
-        else if (passengerIndex >= passengerSeats.Length)
-        {
-            passengerIndex = passengerSeats.Length - 1;
-        }
-
-        return passengerSeats[passengerIndex];
-    }
-
-    private void ScheduleAutoSeatRetry()
-    {
-        if (_localAutoSeated || _autoSeatRetryCount >= MaxAutoSeatRetries)
+        if (_startupGroundingFramesRemaining <= 0)
         {
             return;
         }
 
-        _autoSeatRetryCount++;
-        SendCustomEventDelayedFrames(nameof(TryAutoSeatLocalPlayer), 10);
+        _startupGroundingFramesRemaining--;
+        SnapToGround(StartupGroundProbeHeight, StartupGroundProbeDistance);
+
+        if (_startupGroundingFramesRemaining > 0)
+        {
+            SendCustomEventDelayedFrames(nameof(EnsureGroundedDuringStartup), 1);
+        }
     }
 
     private bool IsLocalDriver()
@@ -466,7 +550,7 @@ public class CarVehicleController : UdonSharpBehaviour
 
     private bool HasActiveDriver()
     {
-        return _driverPlayerId >= 0;
+        return _driverPlayerId >= 0 && IsSeatOccupied(driverSeat);
     }
 
     private void SetHeadlightsEnabled(bool enabled)
@@ -479,30 +563,16 @@ public class CarVehicleController : UdonSharpBehaviour
         for (int i = 0; i < headlights.Length; i++)
         {
             Light headlight = headlights[i];
-            if (headlight == null)
+            if (headlight != null)
             {
-                continue;
+                headlight.enabled = enabled;
             }
-
-            headlight.enabled = enabled;
         }
     }
 
     private void StepVehicle(float deltaTime)
     {
         bool canMove = _engineRunning && HasActiveDriver() && Time.time >= _engineReadyTime;
-
-        if (!_debugHasStepState || canMove != _debugLastCanMove)
-        {
-            Debug.Log("[CarVehicleController] StepVehicle state. engineRunning=" + _engineRunning +
-                      ", hasActiveDriver=" + HasActiveDriver() +
-                      ", engineReady=" + (Time.time >= _engineReadyTime) +
-                      ", canMove=" + canMove +
-                      ", currentSpeed=" + _currentSpeed);
-            _debugHasStepState = true;
-            _debugLastCanMove = canMove;
-        }
-
         float driveInput = 0f;
         float steerInput = 0f;
 
@@ -515,8 +585,10 @@ public class CarVehicleController : UdonSharpBehaviour
             }
             else
             {
-                driveInput = 1f;
-                steerInput = GetAutoRouteSteer();
+                float rawSteer = GetAutoRouteSteer();
+                _smoothedSteerInput = Mathf.SmoothDamp(_smoothedSteerInput, rawSteer, ref _steerVelocity, steerSmoothTime);
+                steerInput = _smoothedSteerInput;
+                driveInput = GetAutoRouteDriveInput(steerInput);
             }
         }
 
@@ -564,7 +636,6 @@ public class CarVehicleController : UdonSharpBehaviour
         float speedFactor = Mathf.Clamp01(Mathf.Abs(_currentSpeed) / Mathf.Max(0.01f, maxForwardSpeed));
         float turnDirection = _currentSpeed < 0f ? -1f : 1f;
         float turnAmount = steerInput * steerRate * speedFactor * turnDirection * deltaTime;
-
         transform.Rotate(0f, turnAmount, 0f, Space.World);
     }
 
@@ -572,11 +643,6 @@ public class CarVehicleController : UdonSharpBehaviour
     {
         if (Mathf.Abs(_currentSpeed) < 0.001f)
         {
-            if (_engineRunning && !_debugLoggedLowSpeed)
-            {
-                Debug.Log("[CarVehicleController] UpdatePosition skipped: currentSpeed too low (" + _currentSpeed + ").");
-                _debugLoggedLowSpeed = true;
-            }
             return;
         }
 
@@ -589,60 +655,13 @@ public class CarVehicleController : UdonSharpBehaviour
         }
 
         flatForward.Normalize();
-        Vector3 delta = flatForward * (_currentSpeed * deltaTime);
-        if (!_debugLoggedMovement)
-        {
-            Debug.Log("[CarVehicleController] UpdatePosition moving. delta=" + delta +
-                      ", currentSpeed=" + _currentSpeed +
-                      ", positionBefore=" + transform.position);
-            _debugLoggedMovement = true;
-        }
-
-        transform.position += delta;
+        transform.position += flatForward * (_currentSpeed * deltaTime);
     }
 
     private float GetAutoRouteSteer()
     {
-        if (!HasRouteAvailable())
-        {
-            Debug.Log("[CarVehicleController] GetAutoRouteSteer stopping engine: route unavailable.");
-            _engineRunning = false;
-            _routeCompleted = true;
-            RequestSerialization();
-            return 0f;
-        }
-
-        Transform targetPoint = routePoints[_routeIndex];
-
-        if (!Utilities.IsValid(targetPoint))
-        {
-            AdvanceRouteIndex();
-            return 0f;
-        }
-
-        Vector3 toTarget = targetPoint.position - transform.position;
-        toTarget.y = 0f;
-
-        if (toTarget.magnitude <= waypointReachDistance)
-        {
-            AdvanceRouteIndex();
-
-            if (!_engineRunning || !HasRouteAvailable())
-            {
-                return 0f;
-            }
-
-            targetPoint = routePoints[_routeIndex];
-            if (!Utilities.IsValid(targetPoint))
-            {
-                return 0f;
-            }
-
-            toTarget = targetPoint.position - transform.position;
-            toTarget.y = 0f;
-        }
-
-        if (toTarget.sqrMagnitude < 0.0001f)
+        Vector3 toTarget;
+        if (!TryGetAutoRouteTargetOffset(out toTarget))
         {
             return 0f;
         }
@@ -652,48 +671,336 @@ public class CarVehicleController : UdonSharpBehaviour
         return Mathf.Clamp(localDirection.x, -1f, 1f);
     }
 
+    private float GetAutoRouteDriveInput(float steerInput)
+    {
+        Vector3 toTarget;
+        if (!TryGetAutoRouteTargetOffset(out toTarget))
+        {
+            return 0f;
+        }
+
+        float slowdownDistance = Mathf.Max(waypointReachDistance + 0.01f, autoRouteSlowdownDistance);
+        float distanceFactor = Mathf.Clamp01(toTarget.magnitude / slowdownDistance);
+        float approachSpeedFactor = Mathf.Lerp(autoRouteMinSpeedFactor, 1f, distanceFactor);
+        float turnSpeedFactor = Mathf.Lerp(1f, autoRouteTurnMinSpeedFactor, Mathf.Clamp01(Mathf.Abs(steerInput)));
+        return Mathf.Clamp01(Mathf.Min(approachSpeedFactor, turnSpeedFactor));
+    }
+
+    private bool TryGetAutoRouteTargetOffset(out Vector3 toTarget)
+    {
+        toTarget = Vector3.zero;
+
+        if (!HasRouteAvailable())
+        {
+            DockAtTerminal(NoTerminalIndex);
+            return false;
+        }
+
+        while (true)
+        {
+            Transform targetPoint = routePoints[_routeIndex];
+            if (!Utilities.IsValid(targetPoint))
+            {
+                AdvanceRouteIndex();
+                if (!_engineRunning || !HasRouteAvailable())
+                {
+                    return false;
+                }
+
+                continue;
+            }
+
+            toTarget = targetPoint.position - transform.position;
+            toTarget.y = 0f;
+
+            if (toTarget.sqrMagnitude < 0.0001f || toTarget.magnitude <= waypointReachDistance)
+            {
+                AdvanceRouteIndex();
+                if (!_engineRunning || !HasRouteAvailable())
+                {
+                    return false;
+                }
+
+                continue;
+            }
+
+            return true;
+        }
+    }
+
     private void AdvanceRouteIndex()
     {
         if (!HasRouteAvailable())
         {
-            Debug.Log("[CarVehicleController] AdvanceRouteIndex stopping engine: route unavailable.");
-            _engineRunning = false;
-            _routeCompleted = true;
+            DockAtTerminal(NoTerminalIndex);
             return;
         }
 
-        if (_routeIndex < routePoints.Length - 1)
+        int lastRouteIndex = GetLastRouteIndex();
+        if (_routeDirection > 0)
         {
-            _routeIndex++;
+            if (_routeIndex < lastRouteIndex)
+            {
+                _routeIndex++;
+                return;
+            }
+
+            DockAtTerminal(lastRouteIndex);
             return;
         }
 
-        if (loopRoute)
+        if (_routeIndex > 0)
         {
-            _routeIndex = 0;
+            _routeIndex--;
             return;
         }
 
-        Debug.Log("[CarVehicleController] AdvanceRouteIndex completed final waypoint. routeIndex=" + _routeIndex);
+        DockAtTerminal(0);
+    }
+
+    private void DockAtTerminal(int terminalIndex)
+    {
         _engineRunning = false;
-        _routeCompleted = true;
+        _routeCompleted = terminalIndex != NoTerminalIndex;
+        _currentSpeed = 0f;
+        _steerInput = 0f;
+        _throttleInput = 0f;
+        _dockedTerminalIndex = terminalIndex;
+
+        if (terminalIndex != NoTerminalIndex)
+        {
+            _routeIndex = terminalIndex;
+            _routeDirection = GetDirectionForTerminal(terminalIndex);
+        }
+
         RequestSerialization();
+    }
+
+    private void InitializeRouteState()
+    {
+        if (!HasRouteAvailable())
+        {
+            _dockedTerminalIndex = NoTerminalIndex;
+            _routeIndex = 0;
+            _routeDirection = 1;
+            _routeCompleted = false;
+            return;
+        }
+
+        _dockedTerminalIndex = DetectNearestTerminalIndex();
+        _routeDirection = GetDirectionForTerminal(_dockedTerminalIndex);
+        _routeIndex = _dockedTerminalIndex;
+        _routeCompleted = false;
+    }
+
+    private bool IsDockedAtTerminal()
+    {
+        if (_dockedTerminalIndex == NoTerminalIndex || _engineRunning)
+        {
+            return false;
+        }
+
+        int lastRouteIndex = GetLastRouteIndex();
+        return _dockedTerminalIndex == 0 || _dockedTerminalIndex == lastRouteIndex;
+    }
+
+    private bool HasRouteTravelFromDockedTerminal()
+    {
+        int lastRouteIndex = GetLastRouteIndex();
+        if (lastRouteIndex < 1)
+        {
+            return false;
+        }
+
+        return _dockedTerminalIndex == 0 || _dockedTerminalIndex == lastRouteIndex;
+    }
+
+    private int GetNextRouteIndexFromDockedTerminal()
+    {
+        int lastRouteIndex = GetLastRouteIndex();
+        if (lastRouteIndex < 1)
+        {
+            return -1;
+        }
+
+        if (_dockedTerminalIndex == 0)
+        {
+            return 1;
+        }
+
+        if (_dockedTerminalIndex == lastRouteIndex)
+        {
+            return lastRouteIndex - 1;
+        }
+
+        return -1;
+    }
+
+    private int GetDirectionForTerminal(int terminalIndex)
+    {
+        return terminalIndex == GetLastRouteIndex() ? -1 : 1;
+    }
+
+    private int GetLastRouteIndex()
+    {
+        return routePoints != null ? routePoints.Length - 1 : -1;
+    }
+
+    private int DetectNearestTerminalIndex()
+    {
+        int lastRouteIndex = GetLastRouteIndex();
+        if (lastRouteIndex <= 0)
+        {
+            return 0;
+        }
+
+        Transform startPoint = routePoints[0];
+        Transform endPoint = routePoints[lastRouteIndex];
+        if (!Utilities.IsValid(startPoint))
+        {
+            return lastRouteIndex;
+        }
+
+        if (!Utilities.IsValid(endPoint))
+        {
+            return 0;
+        }
+
+        Vector3 startOffset = startPoint.position - transform.position;
+        startOffset.y = 0f;
+        Vector3 endOffset = endPoint.position - transform.position;
+        endOffset.y = 0f;
+        return endOffset.sqrMagnitude < startOffset.sqrMagnitude ? lastRouteIndex : 0;
     }
 
     private void SnapToGround()
     {
-        Vector3 origin = transform.position + Vector3.up * groundProbeHeight;
+        SnapToGround(groundProbeHeight, groundProbeDistance);
+    }
+
+    private bool SnapToGround(float probeHeight, float probeDistance)
+    {
+        Vector3 origin = transform.position + Vector3.up * probeHeight;
         RaycastHit hit;
 
-        if (Physics.Raycast(origin, Vector3.down, out hit, groundProbeDistance, groundMask))
+        if (Physics.Raycast(origin, Vector3.down, out hit, probeDistance, groundMask, QueryTriggerInteraction.Ignore))
         {
+            float targetY = hit.point.y + rideHeight;
             Vector3 position = transform.position;
-            position.y = hit.point.y + rideHeight;
+
+            if (_groundYInitialized && _startupGroundingFramesRemaining <= 0)
+            {
+                float diff = targetY - position.y;
+                if (Mathf.Abs(diff) <= groundDeadZone)
+                {
+                    _groundYVelocity = 0f;
+                }
+                else
+                {
+                    position.y = Mathf.SmoothDamp(position.y, targetY, ref _groundYVelocity, Mathf.Max(0.01f, groundSmoothTime), Mathf.Infinity, Time.deltaTime);
+                }
+            }
+            else
+            {
+                position.y = targetY;
+                _groundYVelocity = 0f;
+                _groundYInitialized = true;
+            }
+
             transform.position = position;
+            return true;
+        }
+
+        return false;
+    }
+
+    private void EnsureSeatState()
+    {
+        int totalSeats = 1 + (passengerSeats != null ? passengerSeats.Length : 0);
+        if (_seatOccupants != null && _seatOccupants.Length == totalSeats)
+        {
+            return;
+        }
+
+        _seatOccupants = new int[totalSeats];
+        for (int i = 0; i < _seatOccupants.Length; i++)
+        {
+            _seatOccupants[i] = -1;
+        }
+    }
+
+    private int GetSeatIndex(CarSeatStation seat)
+    {
+        if (seat == null)
+        {
+            return -1;
+        }
+
+        if (seat == driverSeat)
+        {
+            return 0;
+        }
+
+        if (passengerSeats == null)
+        {
+            return -1;
+        }
+
+        for (int i = 0; i < passengerSeats.Length; i++)
+        {
+            if (passengerSeats[i] == seat)
+            {
+                return i + 1;
+            }
+        }
+
+        return -1;
+    }
+
+    private int GetSeatOccupantId(CarSeatStation seat)
+    {
+        EnsureSeatState();
+        int seatIndex = GetSeatIndex(seat);
+        if (seatIndex < 0 || seatIndex >= _seatOccupants.Length)
+        {
+            return -1;
+        }
+
+        return _seatOccupants[seatIndex];
+    }
+
+    private void SetSeatOccupant(CarSeatStation seat, int playerId)
+    {
+        EnsureSeatState();
+        int seatIndex = GetSeatIndex(seat);
+        if (seatIndex >= 0 && seatIndex < _seatOccupants.Length)
+        {
+            _seatOccupants[seatIndex] = playerId;
+        }
+    }
+
+    private void ClearSeatOccupant(CarSeatStation seat)
+    {
+        EnsureSeatState();
+        int seatIndex = GetSeatIndex(seat);
+        if (seatIndex >= 0 && seatIndex < _seatOccupants.Length)
+        {
+            _seatOccupants[seatIndex] = -1;
+        }
+    }
+
+    private void ClearSeatOccupantByPlayerId(int playerId)
+    {
+        EnsureSeatState();
+        for (int i = 0; i < _seatOccupants.Length; i++)
+        {
+            if (_seatOccupants[i] == playerId)
+            {
+                _seatOccupants[i] = -1;
+            }
         }
     }
 }
-
 
 
 
