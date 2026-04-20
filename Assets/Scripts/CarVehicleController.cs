@@ -23,18 +23,19 @@ public class CarVehicleController : UdonSharpBehaviour
     public CarSeatStation driverSeat;
     public CarSeatStation[] passengerSeats;
 
-    public float maxForwardSpeed = 5.5f;
+    public float maxForwardSpeed = 5f;
     public float maxReverseSpeed = 4f;
-    public float acceleration = 2.5f;
+    public float acceleration = 4f;
     public float brakeDeceleration = 5f;
-    public float steerRate = 32f;
+    public float steerRate = 60f;
     public float drag = 3f;
     public float rideHeight = 0.05f;
     public LayerMask groundMask = ~0;
     public Transform[] routePoints;
     public Light[] headlights;
+    public Transform rideRig;
     public bool loopRoute = true;
-    public float waypointReachDistance = 4f;
+    public float waypointReachDistance = 2.5f;
     public float engineStartDelay = 0.2f;
     public bool stopWhenDriverExits = true;
     public bool allowMasterFallback = true;
@@ -42,7 +43,11 @@ public class CarVehicleController : UdonSharpBehaviour
     public float groundProbeDistance = 10f;
     public float groundSmoothTime = 0.22f;
     public float groundDeadZone = 0.015f;
-    public float steerSmoothTime = 0.35f;
+    public float steerSmoothTime = 0.25f;
+    public float rideRigPositionSmoothTime = 0.10f;
+    public float rideRigRotationSmoothTime = 0.08f;
+    public float rideRigSnapDistance = 1.25f;
+    public float rideRigSnapAngle = 18f;
     public float autoRouteSlowdownDistance = 8f;
     public float autoRouteMinSpeedFactor = 0.35f;
     public float autoRouteTurnMinSpeedFactor = 0.55f;
@@ -64,6 +69,7 @@ public class CarVehicleController : UdonSharpBehaviour
     private float _smoothedSteerInput;
     private float _steerVelocity;
     private float _groundYVelocity;
+    private Vector3 _rideRigPositionVelocity;
 
     private void Start()
     {
@@ -72,6 +78,8 @@ public class CarVehicleController : UdonSharpBehaviour
         _startupGroundingFramesRemaining = StartupGroundingFrames;
         SnapToGround(StartupGroundProbeHeight, StartupGroundProbeDistance);
         SetHeadlightsEnabled(false);
+        _rideRigPositionVelocity = Vector3.zero;
+        SnapRideRigToVehicle();
         SendCustomEventDelayedFrames(nameof(EnsureGroundedDuringStartup), 1);
     }
 
@@ -81,6 +89,8 @@ public class CarVehicleController : UdonSharpBehaviour
         {
             StepVehicle(Time.deltaTime);
         }
+
+        UpdateRideRigPresentation(Time.deltaTime);
     }
 
     public bool CanLocalPlayerUseDriverSeat()
@@ -596,6 +606,64 @@ public class CarVehicleController : UdonSharpBehaviour
         UpdateRotation(steerInput, deltaTime);
         UpdatePosition(deltaTime);
         SnapToGround();
+    }
+
+    private void UpdateRideRigPresentation(float deltaTime)
+    {
+        if (rideRig == null)
+        {
+            return;
+        }
+
+        Vector3 targetPosition = transform.position;
+        Quaternion targetRotation = transform.rotation;
+
+        if (Networking.IsOwner(gameObject))
+        {
+            rideRig.position = targetPosition;
+            rideRig.rotation = targetRotation;
+            _rideRigPositionVelocity = Vector3.zero;
+            return;
+        }
+
+        if (Vector3.Distance(rideRig.position, targetPosition) > rideRigSnapDistance)
+        {
+            rideRig.position = targetPosition;
+            _rideRigPositionVelocity = Vector3.zero;
+        }
+        else
+        {
+            float positionSmoothTime = Mathf.Max(0.0001f, rideRigPositionSmoothTime);
+            rideRig.position = Vector3.SmoothDamp(
+                rideRig.position,
+                targetPosition,
+                ref _rideRigPositionVelocity,
+                positionSmoothTime,
+                Mathf.Infinity,
+                deltaTime);
+        }
+
+        if (Quaternion.Angle(rideRig.rotation, targetRotation) > rideRigSnapAngle)
+        {
+            rideRig.rotation = targetRotation;
+        }
+        else
+        {
+            float rotationSmoothTime = Mathf.Max(0.0001f, rideRigRotationSmoothTime);
+            float rotationLerpFactor = 1f - Mathf.Exp(-deltaTime / rotationSmoothTime);
+            rideRig.rotation = Quaternion.Slerp(rideRig.rotation, targetRotation, rotationLerpFactor);
+        }
+    }
+
+    private void SnapRideRigToVehicle()
+    {
+        if (rideRig == null)
+        {
+            return;
+        }
+
+        rideRig.position = transform.position;
+        rideRig.rotation = transform.rotation;
     }
 
     private void UpdateSpeed(float driveInput, bool canMove, float deltaTime)
