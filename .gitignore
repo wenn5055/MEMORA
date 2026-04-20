@@ -73,6 +73,5 @@ crashlytics-build.properties
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
 /[Aa]ssets/[Ss]creenshots
-/Assets/Scripts/SkydomeFollowCamera.cs
-/Assets/Scripts/SkydomeFollowCamera.cs.meta
 /Assets/Screenshots.meta
+/ClientSimStorage/*
