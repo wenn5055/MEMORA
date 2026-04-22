@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 134595725}
-  m_IndirectSpecularColor: {r: 0, g: 0, b: 0, a: 1}
+  m_IndirectSpecularColor: {r: 0.015113525, g: 0.009046665, b: 0.014095025, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -302,6 +302,7 @@ MonoBehaviour:
   _udonSharpBackingUdonBehaviour: {fileID: 111176865}
   spawner: {fileID: 493214674}
   boxVisual: {fileID: 1021864255}
+  hitboxOverride: {fileID: 0}
   capturePoint: {fileID: 802014959}
   railTargets:
   - {fileID: 536617865}
@@ -321,6 +322,7 @@ MonoBehaviour:
   - {fileID: 712485316}
   - {fileID: 112808911}
   - {fileID: 308330159}
+  maxContainedFireflies: 4
   captureRadius: 0.9
   captureCooldown: 0.25
   containedBobAmplitude: 0.0055
@@ -424,7 +426,7 @@ BoxCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 111176862}
-  m_Material: {fileID: 1447606750}
+  m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -480,7 +482,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &112808912
 Transform:
   m_ObjectHideFlags: 0
@@ -25487,7 +25489,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &308330160
 Transform:
   m_ObjectHideFlags: 0
@@ -26126,7 +26128,6 @@ MonoBehaviour:
     SerializationNodes: []
   _udonSharpBackingUdonBehaviour: {fileID: 493214673}
   railTargets: []
-  capturedMask: 0
 --- !u!1 &513184349
 GameObject:
   m_ObjectHideFlags: 0
@@ -31561,7 +31562,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &712485317
 Transform:
   m_ObjectHideFlags: 0
@@ -31638,7 +31639,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &747027728
 Transform:
   m_ObjectHideFlags: 0
@@ -36918,7 +36919,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &851797658
 Transform:
   m_ObjectHideFlags: 0
@@ -36958,7 +36959,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &898181760
 Transform:
   m_ObjectHideFlags: 0
@@ -36968,7 +36969,7 @@ Transform:
   m_GameObject: {fileID: 898181759}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.715, y: -0.025, z: -0.394}
+  m_LocalPosition: {x: -0.701, y: -0.025, z: -0.394}
   m_LocalScale: {x: 0.8, y: 0.8, z: 0.8}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -42962,7 +42963,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1113671893
 Transform:
   m_ObjectHideFlags: 0
@@ -63280,18 +63281,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1417396823}
   m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
---- !u!134 &1447606750
-PhysicMaterial:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: ' (Instance) (Instance) (Instance) (Instance)'
-  dynamicFriction: 0.6
-  staticFriction: 0.6
-  bounciness: 0
-  frictionCombine: 0
-  bounceCombine: 0
 --- !u!1 &1471282026 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 4732411225619626576, guid: 46a5c5e08ee9bb244957b6295f06f261,
@@ -73275,7 +73264,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1662514841
 Transform:
   m_ObjectHideFlags: 0
@@ -73327,7 +73316,7 @@ Transform:
   m_GameObject: {fileID: 1689985335}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0.72157824, z: -0, w: 0.692333}
-  m_LocalPosition: {x: 0.8259036, y: -0.038, z: 0.46586406}
+  m_LocalPosition: {x: 0.913, y: -0.038, z: 0.47}
   m_LocalScale: {x: 0.04, y: 0.04, z: 0.04}
   m_ConstrainProportionsScale: 0
   m_Children: []
