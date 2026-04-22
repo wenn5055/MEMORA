@@ -10,6 +10,7 @@
 - [Project Overview](#project-overview)
 - [Project Architecture](#project-architecture)
 - [Dependencies & Setup](#dependencies--setup)
+  - [VRChat Dependency Recovery](#vrchat-dependency-recovery)
   - [Git LFS Setup](#️-important-git-lfs-setup)
   - [ClientSim (Local Testing)](#clientsim-local-testing)
   - [VRChat (Live Testing)](#vrchat-live-testing)
@@ -54,7 +55,6 @@ All runtime logic is written in **UdonSharp** (C# compiled to VRChat's Udon byte
 | `CarSeatStation.cs` | Wraps a `VRCStation` to track which player is seated, relaying enter/exit events back to `CarVehicleController`. |
 | `CarSeatHandleInteractable.cs` | Interactable handle on each seat — allows players to enter or exit a seat via the VRChat interaction ray. |
 | `LaserPointer.cs` / `LaserPointerNew.cs` | Annotation tool: casts a visible laser beam from the player's hand for pointing at objects of interest. |
-| `FireflySystemBuilder.cs` | Editor/runtime builder that procedurally instantiates firefly prefabs and links them to the catch-box system. |
 | `PhaseTeleportTrigger.cs` | Trigger volume that teleports players between scene phases (environment transitions). |
 
 #### Udon Scripts (`Assets/Scripts/Udon/`)
@@ -110,7 +110,29 @@ These tools are spawned from the **Tools Scene** prefab set and appear in front 
 
 ## Dependencies & Setup
 
+For the full onboarding and troubleshooting flow, see [docs/VRCHAT_SETUP.md](docs/VRCHAT_SETUP.md).
+
 ### Prerequisites
+
+- **Unity 2022.3.22f1** -- you must use this exact version
+- **VRChat Creator Companion (VCC)** -- download at [vrchat.com/home/download](https://vrchat.com/home/download)
+- **Git LFS** -- must be installed before cloning
+
+### VRChat Dependency Recovery
+
+This repository keeps the VRChat package intent in `Packages/vpm-manifest.json`.
+
+If you open the project before VCC restores the Worlds SDK, Unity will report missing `UdonSharp` and `VRC.*` namespaces across many scripts. That usually means the VRChat packages were not restored into your local checkout yet.
+
+Use this recovery order:
+
+1. Install Git LFS, clone the repo, and run `git lfs pull`.
+2. Open the repository through **VRChat Creator Companion** as an existing project.
+3. Let VCC finish restoring the VRChat Worlds SDK packages.
+4. Open the project in **Unity 2022.3.22f1**.
+5. If needed, use `Tools/MEMORA/Restore VRChat Dependencies` in Unity to trigger the embedded resolver again.
+
+### Required Tools
 
 - **Unity 2022.3.22f1** — you must use this exact version
 - **VRChat Creator Companion (VCC)** — download at [vrchat.com/home/download](https://vrchat.com/home/download)
@@ -158,11 +180,13 @@ ClientSim allows you to test the VRChat world directly inside the Unity Editor w
 2. **Download the VRChat Creator Companion (VCC)**  
    → [vrchat.com/home/download](https://vrchat.com/home/download)
 
-3. Open VCC, click **Create New Project**, then browse to the cloned repository folder.
+3. Open VCC and add or open the cloned repository as an existing project.
 
 4. Click **Open Project** — VCC will install all required VRChat SDK packages automatically.
 
-5. Once the project opens in Unity, open any scene from `Assets/Scenes/` and press **Play** to run a local ClientSim session.
+5. Wait for VCC to finish restoring the VRChat SDK packages before troubleshooting any `UdonSharp` compile errors.
+
+6. Once the project opens in Unity, open any scene from `Assets/Scenes/` and press **Play** to run a local ClientSim session.
 
 ---
 
@@ -184,9 +208,9 @@ To test the world in the actual VRChat platform, you need a VRChat account and t
 
 **Playground** 👉 https://vrchat.com/home/launch?worldId=wrld_b3bbe088-43f7-4fa1-8a69-ab07305b1af4
 
-**Car Scene** 👉 https://vrchat.com/home/launch?worldId=wrld_7f5529e4-f6ca-4c21-87d2-d49055e8ec23
+**Car Scene** 👉 https://vrchat.com/home/launch?worldId=wrld_0360b628-d57e-495f-9590-3077b8283360
 
-**Fireflies** 👉 https://vrchat.com/home/launch?worldId=wrld_adf8b80b-c431-4144-948f-3f645cc190ba
+**Fireflies** 👉 https://vrchat.com/home/launch?worldId=wrld_694f76f9-0ef7-4aab-8cc2-445aa9c4d1d3
 
 3. Click **"Invite Me"** on that page.
 4. Back in VRChat, press **Y** on the left controller to open the Menu — you should see a new notification.
@@ -246,3 +270,5 @@ As this is a **VRChat built-in feature**, we are primarily looking for feedback 
 ---
 
 *Thank you for playtesting MEMORA! Your feedback is invaluable in helping us create a more intuitive and memorable experience.*
+
+Note: Passenger-view vehicle jitter in `CarScene` currently appears to be a VRChat-side limitation related to moving `VRCStation` / synced vehicle behavior rather than a local route-tuning issue. Driver-side smoothing and route logic can still be improved, but the remaining seated passenger jitter should be treated as a platform-side constraint for now.

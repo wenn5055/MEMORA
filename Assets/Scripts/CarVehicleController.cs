@@ -17,6 +17,10 @@ public class CarVehicleController : UdonSharpBehaviour
     private const float StartupGroundProbeDistance = 5000f;
     private const int NoTerminalIndex = -1;
     private const float SeatUseDebounceSeconds = 0.35f;
+    private const float AutoRouteSteerDeadZoneDegrees = 3f;
+    private const float AutoRouteFullLockDegrees = 30f;
+    private const float AutoRouteAlignBeforeMoveDegrees = 8f;
+    private const float AutoRoutePivotTurnRateFactor = 0.65f;
 
     public CarDriveMode driveMode = CarDriveMode.Manual;
 
@@ -35,17 +39,10 @@ public class CarVehicleController : UdonSharpBehaviour
     public Light[] headlights;
     public Transform rideRig;
     public float waypointReachDistance = 1.5f;
-    public float engineStartDelay = 0.2f;
-    public bool stopWhenDriverExits = true;
-    public bool allowMasterFallback = true;
     public float groundProbeHeight = 3f;
     public float groundProbeDistance = 10f;
     public float groundSmoothTime = 0.22f;
     public float groundDeadZone = 0.015f;
-    public float rideRigPositionSmoothTime = 0.18f;
-    public float rideRigRotationSmoothTime = 0.12f;
-    public float rideRigSnapDistance = 4.5f;
-    public float rideRigSnapAngle = 45f;
     public float autoRouteSlowdownDistance = 4f;
     public float autoRouteMinSpeedFactor = 0.2f;
 
@@ -58,7 +55,6 @@ public class CarVehicleController : UdonSharpBehaviour
     private float _currentSpeed;
     private float _steerInput;
     private float _throttleInput;
-    private float _engineReadyTime;
     private int _routeIndex;
     private int _startupGroundingFramesRemaining;
     private int _dockedTerminalIndex = NoTerminalIndex;
@@ -66,7 +62,6 @@ public class CarVehicleController : UdonSharpBehaviour
     private float _ignoreUseUntilTime;
     private bool _groundYInitialized;
     private float _groundYVelocity;
-    private Vector3 _rideRigPositionVelocity;
 
     private void Start()
     {
@@ -76,7 +71,6 @@ public class CarVehicleController : UdonSharpBehaviour
         SnapToGround(StartupGroundProbeHeight, StartupGroundProbeDistance);
         _syncedHeadlightsEnabled = false;
         ApplyHeadlightsState(false);
-        _rideRigPositionVelocity = Vector3.zero;
         _syncedSeatExitLocked = false;
         SnapRideRigToVehicle();
         SendCustomEventDelayedFrames(nameof(EnsureGroundedDuringStartup), 1);
@@ -109,7 +103,7 @@ public class CarVehicleController : UdonSharpBehaviour
             return true;
         }
 
-        return allowMasterFallback && player.isMaster;
+        return player.isMaster;
     }
 
     public bool HasRouteAvailable()
@@ -310,14 +304,12 @@ public class CarVehicleController : UdonSharpBehaviour
             _engineRunning = true;
             _syncedSeatExitLocked = true;
             _syncedHeadlightsEnabled = true;
-            _engineReadyTime = Time.time + engineStartDelay;
         }
         else
         {
             _engineRunning = false;
             _syncedSeatExitLocked = false;
             _syncedHeadlightsEnabled = false;
-            _engineReadyTime = 0f;
 
             if (!HasRouteAvailable())
             {
@@ -354,13 +346,8 @@ public class CarVehicleController : UdonSharpBehaviour
         ApplyHeadlightsState(false);
         _steerInput = 0f;
         _throttleInput = 0f;
-
-        if (stopWhenDriverExits)
-        {
-            _engineRunning = false;
-            _currentSpeed = 0f;
-        }
-
+        _engineRunning = false;
+        _currentSpeed = 0f;
         _syncedSeatExitLocked = false;
 
         if (player.isLocal && Networking.IsOwner(gameObject))
@@ -389,7 +376,6 @@ public class CarVehicleController : UdonSharpBehaviour
         _engineRunning = true;
         _syncedSeatExitLocked = true;
         _syncedHeadlightsEnabled = true;
-        _engineReadyTime = Time.time + engineStartDelay;
         ApplyHeadlightsState(true);
         RequestSerialization();
     }
@@ -566,7 +552,6 @@ public class CarVehicleController : UdonSharpBehaviour
 
     public override void OnDeserialization()
     {
-        _rideRigPositionVelocity = Vector3.zero;
         ApplyHeadlightsState(_syncedHeadlightsEnabled);
     }
 
@@ -636,7 +621,7 @@ public class CarVehicleController : UdonSharpBehaviour
 
     private void StepVehicle(float deltaTime)
     {
-        bool canMove = _engineRunning && HasActiveDriver() && Time.time >= _engineReadyTime;
+        bool canMove = _engineRunning && HasActiveDriver();
         float driveInput = 0f;
         float steerInput = 0f;
 
@@ -655,7 +640,7 @@ public class CarVehicleController : UdonSharpBehaviour
         }
 
         UpdateSpeed(driveInput, canMove, deltaTime);
-        UpdateRotation(steerInput, deltaTime);
+        UpdateRotation(steerInput, driveInput, deltaTime);
         UpdatePosition(deltaTime);
         SnapToGround();
     }
@@ -670,41 +655,19 @@ public class CarVehicleController : UdonSharpBehaviour
         Vector3 targetPosition = transform.position;
         Quaternion targetRotation = transform.rotation;
 
-        if (Networking.IsOwner(gameObject) || IsLocalPlayerSeatedInAnySeat())
-        {
-            rideRig.position = targetPosition;
-            rideRig.rotation = targetRotation;
-            _rideRigPositionVelocity = Vector3.zero;
-            return;
-        }
+        /*
+        Removed rideRig tuning path:
+        - rideRigPositionSmoothTime
+        - rideRigRotationSmoothTime
+        - rideRigSnapDistance
+        - rideRigSnapAngle
 
-        if (Vector3.Distance(rideRig.position, targetPosition) > rideRigSnapDistance)
-        {
-            rideRig.position = targetPosition;
-            _rideRigPositionVelocity = Vector3.zero;
-        }
-        else
-        {
-            float positionSmoothTime = Mathf.Max(0.0001f, rideRigPositionSmoothTime);
-            rideRig.position = Vector3.SmoothDamp(
-                rideRig.position,
-                targetPosition,
-                ref _rideRigPositionVelocity,
-                positionSmoothTime,
-                Mathf.Infinity,
-                deltaTime);
-        }
+        Previous non-owner smoothing / snap behavior is intentionally disabled while we
+        prioritize seated stability over external presentation smoothing.
+        */
 
-        if (Quaternion.Angle(rideRig.rotation, targetRotation) > rideRigSnapAngle)
-        {
-            rideRig.rotation = targetRotation;
-        }
-        else
-        {
-            float rotationSmoothTime = Mathf.Max(0.0001f, rideRigRotationSmoothTime);
-            float rotationLerpFactor = 1f - Mathf.Exp(-deltaTime / rotationSmoothTime);
-            rideRig.rotation = Quaternion.Slerp(rideRig.rotation, targetRotation, rotationLerpFactor);
-        }
+        rideRig.position = targetPosition;
+        rideRig.rotation = targetRotation;
     }
 
     private void SnapRideRigToVehicle()
@@ -746,10 +709,20 @@ public class CarVehicleController : UdonSharpBehaviour
         }
     }
 
-    private void UpdateRotation(float steerInput, float deltaTime)
+    private void UpdateRotation(float steerInput, float driveInput, float deltaTime)
     {
         if (Mathf.Abs(_currentSpeed) < 0.01f)
         {
+            if (driveMode == CarDriveMode.AutoRoute &&
+                _engineRunning &&
+                HasActiveDriver() &&
+                Mathf.Abs(driveInput) < 0.01f &&
+                Mathf.Abs(steerInput) > 0.01f)
+            {
+                float pivotTurnAmount = steerInput * steerRate * AutoRoutePivotTurnRateFactor * deltaTime;
+                transform.Rotate(0f, pivotTurnAmount, 0f, Space.World);
+            }
+
             return;
         }
 
@@ -780,21 +753,36 @@ public class CarVehicleController : UdonSharpBehaviour
 
     private float GetAutoRouteSteer()
     {
-        Vector3 toTarget;
-        if (!TryGetAutoRouteTargetOffset(out toTarget))
+        float headingError;
+        if (!TryGetAutoRouteHeadingErrorDegrees(out headingError))
         {
             return 0f;
         }
 
-        toTarget.Normalize();
-        Vector3 localDirection = transform.InverseTransformDirection(toTarget);
-        return Mathf.Clamp(localDirection.x, -1f, 1f);
+        float absoluteHeadingError = Mathf.Abs(headingError);
+        if (absoluteHeadingError <= AutoRouteSteerDeadZoneDegrees)
+        {
+            return 0f;
+        }
+
+        float steerMagnitude = Mathf.InverseLerp(
+            AutoRouteSteerDeadZoneDegrees,
+            AutoRouteFullLockDegrees,
+            absoluteHeadingError);
+
+        return Mathf.Sign(headingError) * steerMagnitude;
     }
 
     private float GetAutoRouteDriveInput()
     {
         Vector3 toTarget;
-        if (!TryGetAutoRouteTargetOffset(out toTarget))
+        float headingError;
+        if (!TryGetAutoRouteTargetOffset(out toTarget) || !TryGetAutoRouteHeadingErrorDegrees(toTarget, out headingError))
+        {
+            return 0f;
+        }
+
+        if (Mathf.Abs(headingError) > AutoRouteAlignBeforeMoveDegrees)
         {
             return 0f;
         }
@@ -844,6 +832,37 @@ public class CarVehicleController : UdonSharpBehaviour
 
             return true;
         }
+    }
+
+    private bool TryGetAutoRouteHeadingErrorDegrees(out float headingError)
+    {
+        headingError = 0f;
+
+        Vector3 toTarget;
+        return TryGetAutoRouteTargetOffset(out toTarget) &&
+               TryGetAutoRouteHeadingErrorDegrees(toTarget, out headingError);
+    }
+
+    private bool TryGetAutoRouteHeadingErrorDegrees(Vector3 toTarget, out float headingError)
+    {
+        headingError = 0f;
+
+        if (toTarget.sqrMagnitude < 0.0001f)
+        {
+            return false;
+        }
+
+        Vector3 flatForward = transform.forward;
+        flatForward.y = 0f;
+        if (flatForward.sqrMagnitude < 0.0001f)
+        {
+            return false;
+        }
+
+        flatForward.Normalize();
+        Vector3 targetDirection = toTarget.normalized;
+        headingError = Vector3.SignedAngle(flatForward, targetDirection, Vector3.up);
+        return true;
     }
 
     private void AdvanceRouteIndex()
