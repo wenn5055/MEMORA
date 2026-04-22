@@ -34,8 +34,7 @@ public class CarVehicleController : UdonSharpBehaviour
     public Transform[] routePoints;
     public Light[] headlights;
     public Transform rideRig;
-    public bool loopRoute = true;
-    public float waypointReachDistance = 2.5f;
+    public float waypointReachDistance = 1.5f;
     public float engineStartDelay = 0.2f;
     public bool stopWhenDriverExits = true;
     public bool allowMasterFallback = true;
@@ -43,15 +42,15 @@ public class CarVehicleController : UdonSharpBehaviour
     public float groundProbeDistance = 10f;
     public float groundSmoothTime = 0.22f;
     public float groundDeadZone = 0.015f;
-    public float steerSmoothTime = 0.25f;
-    public float rideRigPositionSmoothTime = 0.10f;
-    public float rideRigRotationSmoothTime = 0.08f;
-    public float rideRigSnapDistance = 1.25f;
-    public float rideRigSnapAngle = 18f;
-    public float autoRouteSlowdownDistance = 8f;
-    public float autoRouteMinSpeedFactor = 0.35f;
-    public float autoRouteTurnMinSpeedFactor = 0.55f;
+    public float rideRigPositionSmoothTime = 0.18f;
+    public float rideRigRotationSmoothTime = 0.12f;
+    public float rideRigSnapDistance = 4.5f;
+    public float rideRigSnapAngle = 45f;
+    public float autoRouteSlowdownDistance = 4f;
+    public float autoRouteMinSpeedFactor = 0.2f;
 
+    [UdonSynced] private bool _syncedSeatExitLocked;
+    [UdonSynced] private bool _syncedHeadlightsEnabled;
     private int _driverPlayerId = -1;
     private int[] _seatOccupants;
     private bool _engineRunning;
@@ -66,8 +65,6 @@ public class CarVehicleController : UdonSharpBehaviour
     private int _routeDirection = 1;
     private float _ignoreUseUntilTime;
     private bool _groundYInitialized;
-    private float _smoothedSteerInput;
-    private float _steerVelocity;
     private float _groundYVelocity;
     private Vector3 _rideRigPositionVelocity;
 
@@ -77,8 +74,10 @@ public class CarVehicleController : UdonSharpBehaviour
         InitializeRouteState();
         _startupGroundingFramesRemaining = StartupGroundingFrames;
         SnapToGround(StartupGroundProbeHeight, StartupGroundProbeDistance);
-        SetHeadlightsEnabled(false);
+        _syncedHeadlightsEnabled = false;
+        ApplyHeadlightsState(false);
         _rideRigPositionVelocity = Vector3.zero;
+        _syncedSeatExitLocked = false;
         SnapRideRigToVehicle();
         SendCustomEventDelayedFrames(nameof(EnsureGroundedDuringStartup), 1);
     }
@@ -187,7 +186,7 @@ public class CarVehicleController : UdonSharpBehaviour
             return false;
         }
 
-        if (_engineRunning)
+        if (IsSeatExitLocked())
         {
             return false;
         }
@@ -218,7 +217,7 @@ public class CarVehicleController : UdonSharpBehaviour
             return false;
         }
 
-        if (_engineRunning)
+        if (IsSeatExitLocked())
         {
             return false;
         }
@@ -289,7 +288,6 @@ public class CarVehicleController : UdonSharpBehaviour
         }
 
         _driverPlayerId = player.playerId;
-        SetHeadlightsEnabled(true);
 
         if (!player.isLocal)
         {
@@ -310,11 +308,15 @@ public class CarVehicleController : UdonSharpBehaviour
         if (driveMode == CarDriveMode.Manual)
         {
             _engineRunning = true;
+            _syncedSeatExitLocked = true;
+            _syncedHeadlightsEnabled = true;
             _engineReadyTime = Time.time + engineStartDelay;
         }
         else
         {
             _engineRunning = false;
+            _syncedSeatExitLocked = false;
+            _syncedHeadlightsEnabled = false;
             _engineReadyTime = 0f;
 
             if (!HasRouteAvailable())
@@ -329,6 +331,7 @@ public class CarVehicleController : UdonSharpBehaviour
             }
         }
 
+        ApplyHeadlightsState(_syncedHeadlightsEnabled);
         RequestSerialization();
     }
 
@@ -347,7 +350,8 @@ public class CarVehicleController : UdonSharpBehaviour
         }
 
         _driverPlayerId = -1;
-        SetHeadlightsEnabled(false);
+        _syncedHeadlightsEnabled = false;
+        ApplyHeadlightsState(false);
         _steerInput = 0f;
         _throttleInput = 0f;
 
@@ -356,6 +360,8 @@ public class CarVehicleController : UdonSharpBehaviour
             _engineRunning = false;
             _currentSpeed = 0f;
         }
+
+        _syncedSeatExitLocked = false;
 
         if (player.isLocal && Networking.IsOwner(gameObject))
         {
@@ -381,7 +387,10 @@ public class CarVehicleController : UdonSharpBehaviour
         _dockedTerminalIndex = NoTerminalIndex;
         _routeCompleted = false;
         _engineRunning = true;
+        _syncedSeatExitLocked = true;
+        _syncedHeadlightsEnabled = true;
         _engineReadyTime = Time.time + engineStartDelay;
+        ApplyHeadlightsState(true);
         RequestSerialization();
     }
 
@@ -393,8 +402,11 @@ public class CarVehicleController : UdonSharpBehaviour
         }
 
         _engineRunning = false;
+        _syncedSeatExitLocked = false;
+        _syncedHeadlightsEnabled = false;
         _steerInput = 0f;
         _throttleInput = 0f;
+        ApplyHeadlightsState(false);
         RequestSerialization();
     }
 
@@ -522,10 +534,12 @@ public class CarVehicleController : UdonSharpBehaviour
         }
 
         _driverPlayerId = -1;
-        SetHeadlightsEnabled(false);
+        _syncedHeadlightsEnabled = false;
+        ApplyHeadlightsState(false);
         _steerInput = 0f;
         _throttleInput = 0f;
         _engineRunning = false;
+        _syncedSeatExitLocked = false;
         _currentSpeed = 0f;
 
         if (Networking.IsOwner(gameObject))
@@ -550,6 +564,12 @@ public class CarVehicleController : UdonSharpBehaviour
         }
     }
 
+    public override void OnDeserialization()
+    {
+        _rideRigPositionVelocity = Vector3.zero;
+        ApplyHeadlightsState(_syncedHeadlightsEnabled);
+    }
+
     private bool IsLocalDriver()
     {
         VRCPlayerApi localPlayer = Networking.LocalPlayer;
@@ -563,7 +583,17 @@ public class CarVehicleController : UdonSharpBehaviour
         return _driverPlayerId >= 0 && IsSeatOccupied(driverSeat);
     }
 
-    private void SetHeadlightsEnabled(bool enabled)
+    private bool IsSeatExitLocked()
+    {
+        if (Networking.IsOwner(gameObject))
+        {
+            return _engineRunning;
+        }
+
+        return _syncedSeatExitLocked;
+    }
+
+    private void ApplyHeadlightsState(bool enabled)
     {
         if (headlights == null)
         {
@@ -573,9 +603,33 @@ public class CarVehicleController : UdonSharpBehaviour
         for (int i = 0; i < headlights.Length; i++)
         {
             Light headlight = headlights[i];
-            if (headlight != null)
+            if (headlight == null)
             {
-                headlight.enabled = enabled;
+                continue;
+            }
+
+            headlight.enabled = enabled;
+
+            Transform headlightTransform = headlight.transform;
+            if (headlightTransform == null)
+            {
+                continue;
+            }
+
+            int childCount = headlightTransform.childCount;
+            for (int childIndex = 0; childIndex < childCount; childIndex++)
+            {
+                Transform child = headlightTransform.GetChild(childIndex);
+                if (child == null)
+                {
+                    continue;
+                }
+
+                Renderer childRenderer = child.GetComponent<Renderer>();
+                if (childRenderer != null)
+                {
+                    childRenderer.enabled = enabled;
+                }
             }
         }
     }
@@ -595,10 +649,8 @@ public class CarVehicleController : UdonSharpBehaviour
             }
             else
             {
-                float rawSteer = GetAutoRouteSteer();
-                _smoothedSteerInput = Mathf.SmoothDamp(_smoothedSteerInput, rawSteer, ref _steerVelocity, steerSmoothTime);
-                steerInput = _smoothedSteerInput;
-                driveInput = GetAutoRouteDriveInput(steerInput);
+                steerInput = GetAutoRouteSteer();
+                driveInput = GetAutoRouteDriveInput();
             }
         }
 
@@ -618,7 +670,7 @@ public class CarVehicleController : UdonSharpBehaviour
         Vector3 targetPosition = transform.position;
         Quaternion targetRotation = transform.rotation;
 
-        if (Networking.IsOwner(gameObject))
+        if (Networking.IsOwner(gameObject) || IsLocalPlayerSeatedInAnySeat())
         {
             rideRig.position = targetPosition;
             rideRig.rotation = targetRotation;
@@ -739,7 +791,7 @@ public class CarVehicleController : UdonSharpBehaviour
         return Mathf.Clamp(localDirection.x, -1f, 1f);
     }
 
-    private float GetAutoRouteDriveInput(float steerInput)
+    private float GetAutoRouteDriveInput()
     {
         Vector3 toTarget;
         if (!TryGetAutoRouteTargetOffset(out toTarget))
@@ -749,9 +801,7 @@ public class CarVehicleController : UdonSharpBehaviour
 
         float slowdownDistance = Mathf.Max(waypointReachDistance + 0.01f, autoRouteSlowdownDistance);
         float distanceFactor = Mathf.Clamp01(toTarget.magnitude / slowdownDistance);
-        float approachSpeedFactor = Mathf.Lerp(autoRouteMinSpeedFactor, 1f, distanceFactor);
-        float turnSpeedFactor = Mathf.Lerp(1f, autoRouteTurnMinSpeedFactor, Mathf.Clamp01(Mathf.Abs(steerInput)));
-        return Mathf.Clamp01(Mathf.Min(approachSpeedFactor, turnSpeedFactor));
+        return Mathf.Lerp(autoRouteMinSpeedFactor, 1f, distanceFactor);
     }
 
     private bool TryGetAutoRouteTargetOffset(out Vector3 toTarget)
@@ -829,11 +879,14 @@ public class CarVehicleController : UdonSharpBehaviour
     private void DockAtTerminal(int terminalIndex)
     {
         _engineRunning = false;
+        _syncedSeatExitLocked = false;
+        _syncedHeadlightsEnabled = false;
         _routeCompleted = terminalIndex != NoTerminalIndex;
         _currentSpeed = 0f;
         _steerInput = 0f;
         _throttleInput = 0f;
         _dockedTerminalIndex = terminalIndex;
+        ApplyHeadlightsState(false);
 
         if (terminalIndex != NoTerminalIndex)
         {
